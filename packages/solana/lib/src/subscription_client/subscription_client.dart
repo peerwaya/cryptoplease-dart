@@ -24,11 +24,13 @@ class SubscriptionClient {
     Duration? pingInterval,
     Duration? connectTimeout,
   }) {
-    final channel = IOWebSocketChannel.connect(
-      uri,
-      pingInterval: pingInterval,
-      connectTimeout: connectTimeout,
-    );
+    final channel = pingInterval != null || connectTimeout != null
+        ? IOWebSocketChannel.connect(
+            uri,
+            pingInterval: pingInterval,
+            connectTimeout: connectTimeout,
+          )
+        : WebSocketChannel.connect(uri);
     _sink = channel.sink;
     _stream = channel.stream.asBroadcastStream();
   }
