@@ -1,5 +1,7 @@
 {
   "@@locale": "es",
+  "activities_lblAddCash": "Agregar efectivo",
+  "@activities_lblAddCash": {},
   "activities_lblBoughtToken": "Compró {amount}",
   "@activities_lblBoughtToken": {
     "placeholders": {
@@ -14,26 +16,16 @@
   "@activities_lblFailure": {},
   "activities_lblInProgress": "En curso",
   "@activities_lblInProgress": {},
-  "activities_lblSoldToken": "{amount} Vendido",
-  "@activities_lblSoldToken": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
   "activities_lblSuccess": "Éxito",
   "@activities_lblSuccess": {},
   "activities_lblTitle": "Actividad",
   "@activities_lblTitle": {},
+  "activities_lblWithdraw": "Retirar efectivo",
+  "@activities_lblWithdraw": {},
   "appLock_lblAutoLock": "Bloqueo automático",
   "@appLock_lblAutoLock": {},
   "appLock_lblAutoLockDescription": "Requiere contraseña para acceder a la aplicación",
   "@appLock_lblAutoLockDescription": {},
-  "backupPhrase_lblSuccessMessage1": "Has confirmado con éxito tu frase secreta de recuperación.",
-  "@backupPhrase_lblSuccessMessage1": {},
-  "backupPhrase_lblSuccessMessage2": "Asegúrate de mantenerla privada y guardarla en un lugar seguro y protegido.",
-  "@backupPhrase_lblSuccessMessage2": {},
   "balances_lblConnectionError": "¡No se puede conectar a la red!",
   "@balances_lblConnectionError": {},
   "carousel1Subtitle": "Transferencias de dinero instantáneas, con tarifas bajas a más de 200 países y territorios.",
@@ -56,8 +48,6 @@
   "@carouselSendMoneyBtn": {},
   "comingSoon": "¡Muy pronto!",
   "@comingSoon": {},
-  "completeThePuzzle": "¿Lo escribiste en tu frase de recuperación correctamente?Pruébelo aquí:",
-  "@completeThePuzzle": {},
   "contactUs": "Contáctenos",
   "@contactUs": {},
   "copiedFid": "Copiada FID: {fid}",
@@ -82,12 +72,30 @@
   "@create": {},
   "crypto": "Crypto",
   "@crypto": {},
-  "cryptoCashBalance": "Tu Cripto Efectivo Saldo",
+  "cryptoCashBalance": "Tu Efectivo",
   "@cryptoCashBalance": {},
   "cryptoInvestments": "Tu cripto",
   "@cryptoInvestments": {},
   "decline": "Rechazar",
   "@decline": {},
+  "depositDisclaimer": "Los fondos deben ser enviados desde tu cuenta personal. Cualquier fondo enviado a través de una cuenta que no coincida con los detalles de tu identificación será reservado.",
+  "@depositDisclaimer": {},
+  "depositInstruction1": "Transfiere dinero desde tu cuenta bancaria a nuestro socio local:",
+  "@depositInstruction1": {},
+  "depositInstruction2": "Una vez que el dinero haya sido transferido, regresa a Espresso Cash y continúa a continuación.",
+  "@depositInstruction2": {},
+  "depositReceiveAmount": "Recibirás: {amount}",
+  "@depositReceiveAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "depositTitle": "Agregar efectivo",
+  "@depositTitle": {},
+  "depositTransferAmount": "Monto a transferir",
+  "@depositTransferAmount": {},
   "discover": "DESCUBRIR",
   "@discover": {},
   "displayEmptyBalanceSubtitle": "Muestra tus cuentas con saldos cero",
@@ -138,12 +146,12 @@
   },
   "following": "Following",
   "@following": {},
-  "fundYourAccount": "Añade fondos a tu cuenta para enviar dinero",
-  "@fundYourAccount": {},
   "help": "Ayuda",
   "@help": {},
   "incomingSplitKeyPayments_lblByClickingTheSecondLink": "Al hacer clic en el segundo enlace del mensaje o en el botón de cancelación, aceptas nuestra ",
   "@incomingSplitKeyPayments_lblByClickingTheSecondLink": {},
+  "incomingUsdcFeeNotice": "Se te ha cobrado una tarifa única de $0.10 por tu primera transacción entrante.",
+  "@incomingUsdcFeeNotice": {},
   "incorrectPasscode": "código de acceso incorrecto.Volver a intentarlo",
   "@incorrectPasscode": {},
   "insufficientFundsForFeeMessage": "No tienes suficiente {feeToken} para pagar la tarifa de la red, necesita al menos {amount}.",
@@ -184,18 +192,6 @@
   "@iUnderstand": {},
   "iUnderstandIfLoseMySecret": "Entiendo que si pierdo mi frase de recuperación secreta, no podré acceder a fondos.",
   "@iUnderstandIfLoseMySecret": {},
-  "landingAlreadyInstalled": "¿Ya tienes Espresso instalado? Salta al paso 2",
-  "@landingAlreadyInstalled": {},
-  "landingInstallApp": "Instalar Espresso Cash",
-  "@landingInstallApp": {},
-  "landingReceiveMoney": "Recibe tu dinero",
-  "@landingReceiveMoney": {},
-  "landingScanQr": "Escanea el código QR",
-  "@landingScanQr": {},
-  "landingSubtitle": "Para completar la transacción, sigue los pasos a continuación.",
-  "@landingSubtitle": {},
-  "landingTitle": "Se ha enviado dinero a tu cuenta.",
-  "@landingTitle": {},
   "learnAboutCrypto": "Aprendiendo sobre cripto",
   "@learnAboutCrypto": {},
   "learnAboutCryptoDescription": "Obtenga ayuda con todas las cosas cripto",
@@ -300,8 +296,56 @@
   "@noEmailInCryptoParagraph": {},
   "noResultsFound": "Sin resultados encontrados.",
   "@noResultsFound": {},
+  "offRampCancelSubtitle": "¿Estás seguro(a) de que quieres cancelar este retiro?",
+  "@offRampCancelSubtitle": {},
+  "offRampCancelTitle": "Cancelar retiro",
+  "@offRampCancelTitle": {},
+  "offRampDepositError": "Hubo un problema con tu retiro",
+  "@offRampDepositError": {},
+  "offRampReceiveAmount": "Recibirás {value}",
+  "@offRampReceiveAmount": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "offRampTopPartnerTitle": "Retira a tu cuenta bancaria usando nuestro principal socio",
   "@offRampTopPartnerTitle": {},
+  "offRampWaitingForPartner": "Tu dinero está en camino",
+  "@offRampWaitingForPartner": {},
+  "offRampWithdrawalFailure": "Hubo un problema con tu retiro. Por favor, contáctanos.",
+  "@offRampWithdrawalFailure": {},
+  "offRampWithdrawCancelled": "{amount} retiro cancelado exitosamente.",
+  "@offRampWithdrawCancelled": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "offRampWithdrawCancelledTitle": "El retiro ha sido cancelado",
+  "@offRampWithdrawCancelledTitle": {},
+  "offRampWithdrawInitiated": "Retiro iniciado",
+  "@offRampWithdrawInitiated": {},
+  "offRampWithdrawNotice": "Los retiros normalmente pueden tardar hasta 3 días hábiles en recibirse.",
+  "@offRampWithdrawNotice": {},
+  "offRampWithdrawOngoing": "Enviando {amount}",
+  "@offRampWithdrawOngoing": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "offRampWithdrawReceived": "Se ha recibido dinero",
+  "@offRampWithdrawReceived": {},
+  "offRampWithdrawSent": "USDC enviado al socio",
+  "@offRampWithdrawSent": {},
+  "offRampWithdrawSuccess": "Tu retiro se realizó con éxito.",
+  "@offRampWithdrawSuccess": {},
+  "offRampWithdrawTitle": "Progreso de retiro",
+  "@offRampWithdrawTitle": {},
   "ok": "OK",
   "@ok": {},
   "onboardingBullet": "¡La criptoinversión simplificada, tanto si eres nuevo como si eres un profesional experimentado!",
@@ -310,18 +354,60 @@
   "@onboardingIntro": {},
   "onboardingNoticeFinishSetup": "Finalizar",
   "@onboardingNoticeFinishSetup": {},
-  "onboardingNoticeMessage": "Completa la configuración, asegurando tu cuenta.",
-  "@onboardingNoticeMessage": {},
   "oneMonth": "1 mes",
   "@oneMonth": {},
   "oneWeek": "1 semana",
   "@oneWeek": {},
+  "onRampAwaitingFunds": "Espera un momento. Tu pedido se está procesando.",
+  "@onRampAwaitingFunds": {},
+  "onRampDepositExpired": "Tu pedido ha caducado. Por favor, inténtalo de nuevo.",
+  "@onRampDepositExpired": {},
+  "onRampDepositFailure": "Hubo un problema con tu depósito. Por favor, contáctanos.",
+  "@onRampDepositFailure": {},
+  "onRampDepositInitiated": "Depósito iniciado",
+  "@onRampDepositInitiated": {},
+  "onRampDepositOngoing": "Depositando {amount}",
+  "@onRampDepositOngoing": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "onRampDepositReceived": "USDC recibido",
+  "@onRampDepositReceived": {},
+  "onRampDepositSuccess": "Tu depósito se realizó con éxito.",
+  "@onRampDepositSuccess": {},
+  "onRampDepositTitle": "Progreso de añadir efectivo",
+  "@onRampDepositTitle": {},
+  "onRampLocalTransferTile": "Moneda local transferida\nMonto enviado: {amount}\n{name}: {account}",
+  "@onRampLocalTransferTile": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "account": {
+        "type": "String"
+      }
+    }
+  },
   "onRampTopPartnerTitle": "Transfiere dinero a Espresso utilizando nuestro principal socio de pago",
   "@onRampTopPartnerTitle": {},
   "openInAppScanner": "Abrir el escáner QR integrado en la aplicación",
   "@openInAppScanner": {},
   "operationSend": "enviada",
   "@operationSend": {},
+  "orderId": "Order ID: {orderId}",
+  "@orderId": {
+    "placeholders": {
+      "orderId": {
+        "type": "String"
+      }
+    }
+  },
   "outgoingSplitKeyPayments_btnCancel": "Cancelar la transferencia",
   "@outgoingSplitKeyPayments_btnCancel": {},
   "outgoingSplitKeyPayments_lblCancelConfirmationSubtitle": "¿Estás seguro que quieres cancelar esta transferencia?",
@@ -356,22 +442,7 @@
   "@paymentRequest_lblCancelConfirmationSubtitle": {},
   "paymentRequest_lblCancelConfirmationTitle": "Cancelar la solicitud de pago",
   "@paymentRequest_lblCancelConfirmationTitle": {},
-  "paymentRequestSuccessNotificationTitle": "Su solicitud de {amount} fue pagada.",
-  "@paymentRequestSuccessNotificationTitle": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "paymentRequestTitle": "Solicitud de pago para {amount}",
-  "@paymentRequestTitle": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
+  "paymentRequestTitle": "Solicitud de pago",
   "pending": "Pendiente",
   "@pending": {},
   "photoLibrary": "Librería fotográfica",
@@ -468,10 +539,6 @@
   "@recentActivityLbl": {},
   "recoverySubHeading": "Por favor, escriba su siguiente frase de recuperación secreta y guárdela cuidadosamente. Esta frase está compuesta de 12 palabras generadas al azar. No podrá recuperar sus fondos si pierde estas palabras.",
   "@recoverySubHeading": {},
-  "recoveryWarningInfo": "Lea cuidadosamente la información a continuación antes de ver su frase de recuperación secreta.",
-  "@recoveryWarningInfo": {},
-  "recoveryWarningParagraph": "Para mantener segura tu billetera, es crucial resguardar tu frase secreta de recuperación. Compartir esta frase otorga a otros acceso a tu dinero.\n\nNO la compartas bajo ninguna circunstancia. Evita ingresar tu frase de recuperación en ninguna forma o aplicación.",
-  "@recoveryWarningParagraph": {},
   "reEnterPasscode": "Vuelva a ingresar su código de acceso",
   "@reEnterPasscode": {},
   "remindMeLater": "Recuérdame más tarde",
@@ -484,7 +551,7 @@
   "@requestNotePlaceholder": {},
   "requestNoteRequesting": "Solicitante",
   "@requestNoteRequesting": {},
-  "requestOrSendPayment": "Solicita o enviar un pago",
+  "requestOrSendPayment": "Enviar o Solicita",
   "@requestOrSendPayment": {},
   "resendLink": "Reenviar enlace",
   "@resendLink": {},
@@ -492,22 +559,10 @@
   "@retry": {},
   "save": "Guardar",
   "@save": {},
-  "scanToReceive": "Escanea para recibir {amount}",
-  "@scanToReceive": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "scanToSend": "Escanear para enviar {amount}",
-  "@scanToSend": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
+  "scanToReceive": "Escanea para recibir",
+  "@scanToReceive": {},
+  "scanToSend": "Escanear para enviar",
+  "@scanToSend": {},
   "search": "Buscar",
   "@search": {},
   "searchPlaceholder": "Buscar...",
@@ -522,13 +577,13 @@
   "@send": {},
   "sendAs": "Enviar como",
   "@sendAs": {},
-  "sendExplanation": "Una vez que haya creado este enlace, ¡puede enviarlo a su destinatario!Luego pueden canjear los fondos simplemente haciendo clic en los enlaces.",
+  "sendExplanation": "Una vez que hayas creado este enlace, puedes enviarlo a tu destinatario. Ellos podrán canjear los fondos simplemente haciendo clic en el enlace.",
   "@sendExplanation": {},
   "sendMoney": "Enviar dinero",
   "@sendMoney": {},
   "sentDirectly": "Enviada",
   "@sentDirectly": {},
-  "sentViaLink": "Enviado por enlaces",
+  "sentViaLink": "Enviado por enlace",
   "@sentViaLink": {},
   "setReminder": "Establecer un recordatorio para{duration}",
   "@setReminder": {
@@ -542,14 +597,10 @@
   "@settings": {},
   "share": "Compartir",
   "@share": {},
-  "shareInstructions": "Para recibirlo, debe hacer clic en dos enlaces.Sigue estos dos pasos a continuación:",
+  "shareInstructions": "Para recibirlo, debes hacer clic en el enlace:",
   "@shareInstructions": {},
   "shareIntroFt": "¡Hola!\n\nTe acabo de enviar ",
   "@shareIntroFt": {},
-  "shareLink": "Compartir enlaces de pago",
-  "@shareLink": {},
-  "shareLinks": "Compartir enlaces",
-  "@shareLinks": {},
   "sharePaymentRequestLinkInstructions": "Para pagarme con un clic, visite:",
   "@sharePaymentRequestLinkInstructions": {},
   "sharePaymentRequestLinkIntro": "Hola!\n\nHe enviado una solicitud de ",
@@ -565,24 +616,18 @@
       }
     }
   },
-  "sharePaymentRequestLinkTitle": "Compartir enlace",
-  "@sharePaymentRequestLinkTitle": {},
-  "sharePaymentRequestQrCodeTitle": "Compartir el código QR",
-  "@sharePaymentRequestQrCodeTitle": {},
   "sharePaymentRequestTitle": "¡Se ha creado una solicitud!",
   "@sharePaymentRequestTitle": {},
   "shareStep1": "Paso 1: haga clic en el primer enlace:",
   "@shareStep1": {},
   "shareStep2": "Paso 2: cuando la aplicación le pida, haga clic en el segundo enlace:",
   "@shareStep2": {},
-  "signIn1": "¿Ya tienes una billetera solana? ",
+  "signIn1": "¿Ya tienes una billetera? ",
   "@signIn1": {},
   "signIn2": "Haz clic aquí",
   "@signIn2": {},
   "signIn_lblByCreatingWalletYouAgree": "Al crear una billetera o usar una billetera existente, usted acepta nuestro ",
   "@signIn_lblByCreatingWalletYouAgree": {},
-  "signInWithSaga": "Inicia sesión con Saga",
-  "@signInWithSaga": {},
   "signOut": "Eliminar la billetera",
   "@signOut": {},
   "signOutConfirmation": "¿Estás seguro de que quieres eliminar la billetera?",
@@ -813,8 +858,6 @@
   "@weWereUnableToFetchTokenPrice": {},
   "yes": "Sí",
   "@yes": {},
-  "yesDeleteMyWallet": "Si, elimina mi billetera",
-  "@yesDeleteMyWallet": {},
   "youOwn": "Tu posees",
   "@youOwn": {},
   "yourEmailDisclaimer": "Tu dirección de correo electrónico se guarda únicamente localmente y se comparte solamente con los socios de ingreso y salida de efectivo.",
@@ -823,8 +866,6 @@
   "@yourEmailPlaceholder": {},
   "yourFirstNamePlaceholder": "Elige un nombre de usuario",
   "@yourFirstNamePlaceholder": {},
-  "yourLinkIsReady": "Tu enlace está listo",
-  "@yourLinkIsReady": {},
   "yourRecoveryPhrase": "Tu frase de recuperación secreta",
   "@yourRecoveryPhrase": {},
   "yourRecoveryPhraseSub": "Esta frase está compuesta por 12 palabras generadas al azar. Por favor, anota tu siguiente frase secreta de recuperación y guárdala cuidadosamente.",

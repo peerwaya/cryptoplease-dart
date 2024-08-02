@@ -3,19 +3,22 @@
 import 'package:dfunc/dfunc.dart';
 import 'package:drift/drift.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
+import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:solana/base58.dart';
 import 'package:solana/encoder.dart';
 
-import '../../../core/escrow_private_key.dart';
 import '../../../data/db/db.dart';
 import '../../../data/db/mixins.dart';
+import '../../accounts/auth_scope.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../escrow/models/escrow_private_key.dart';
 import '../../transactions/models/tx_results.dart';
 import '../models/incoming_link_payment.dart';
 
-@injectable
-class ILPRepository {
+@Singleton(scope: authScope)
+class ILPRepository implements Disposable {
   const ILPRepository(this._db);
 
   final MyDatabase _db;
@@ -33,23 +36,11 @@ class ILPRepository {
   }
 
   Future<void> save(IncomingLinkPayment payment) async {
-    await payment.status.maybeMap(
-      txFailure: (status) async {
-        await Sentry.captureMessage(
-          'ILP tx failure',
-          level: SentryLevel.warning,
-          withScope: (scope) => scope.setContexts('data', {
-            'reason': status.reason,
-          }),
-        );
-      },
-      orElse: () async {},
-    );
-
     await _db.into(_db.iLPRows).insertOnConflictUpdate(await payment.toDto());
   }
 
-  Future<void> clear() => _db.delete(_db.iLPRows).go();
+  @override
+  Future<void> onDispose() => _db.delete(_db.iLPRows).go();
 
   Stream<IList<IncomingLinkPayment>> watchTxCreated() => _watchWithStatuses([
         ILPStatusDto.txCreated,
@@ -77,6 +68,8 @@ class ILPRows extends Table with EntityMixin, TxStatusMixin {
 
   TextColumn get privateKey => text()();
   IntColumn get status => intEnum<ILPStatusDto>()();
+
+  IntColumn get feeAmount => integer().nullable()();
 }
 
 enum ILPStatusDto {
@@ -99,21 +92,26 @@ extension on ILPStatusDto {
   ILPStatus toModel(ILPRow row) {
     final tx = row.tx?.let(SignedTx.decode);
     final txId = row.txId;
-    final slot = row.slot?.let(BigInt.tryParse);
 
     switch (this) {
       case ILPStatusDto.txCreated:
         return ILPStatus.txCreated(
           tx!,
-          slot: slot ?? BigInt.zero,
         );
       case ILPStatusDto.txSent:
         return ILPStatus.txSent(
           tx ?? StubSignedTx(txId!),
-          slot: slot ?? BigInt.zero,
+          signature: row.txId!,
         );
       case ILPStatusDto.success:
-        return ILPStatus.success(txId: txId!);
+        final feeAmount = row.feeAmount;
+
+        return ILPStatus.success(
+          tx: tx ?? StubSignedTx(txId!),
+          fee: feeAmount != null
+              ? CryptoAmount(value: feeAmount, cryptoCurrency: Currency.usdc)
+              : null,
+        );
       case ILPStatusDto.txFailure:
         return ILPStatus.txFailure(
           reason: row.txFailureReason ?? TxFailureReason.unknown,
@@ -130,8 +128,11 @@ extension on IncomingLinkPayment {
         status: status.toDto(),
         tx: status.toTx(),
         txId: status.toTxId(),
-        slot: status.toSlot().toString(),
         txFailureReason: status.toTxFailureReason(),
+        feeAmount: switch (status) {
+          ILPStatusSuccess(:final fee) => fee?.value,
+          _ => null,
+        },
       );
 }
 
@@ -149,15 +150,11 @@ extension on ILPStatus {
       );
 
   String? toTxId() => mapOrNull(
-        success: (it) => it.txId,
+        txSent: (it) => it.signature,
+        success: (it) => it.tx.id,
       );
 
   TxFailureReason? toTxFailureReason() => mapOrNull(
         txFailure: (it) => it.reason,
-      );
-
-  BigInt? toSlot() => mapOrNull(
-        txCreated: (it) => it.slot,
-        txSent: (it) => it.slot,
       );
 }

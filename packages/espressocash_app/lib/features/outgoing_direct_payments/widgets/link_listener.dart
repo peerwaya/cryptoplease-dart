@@ -1,20 +1,20 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
-import 'package:decimal/decimal.dart';
 import 'package:dfunc/dfunc.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:solana/solana_pay.dart';
 
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../core/dynamic_links_notifier.dart';
-import '../../../core/presentation/format_amount.dart';
-import '../../../core/solana_helpers.dart';
-import '../../../core/tokens/token.dart';
+import '../../../di.dart';
 import '../../../l10n/device_locale.dart';
+import '../../../l10n/l10n.dart';
+import '../../../ui/snackbar.dart';
+import '../../../utils/solana_pay.dart';
 import '../../conversion_rates/data/repository.dart';
 import '../../conversion_rates/services/amount_ext.dart';
+import '../../conversion_rates/widgets/extensions.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../dynamic_links/widgets/dynamic_link_handler.dart';
+import '../../tokens/token.dart';
 import '../screens/odp_confirmation_screen.dart';
 import '../screens/odp_details_screen.dart';
 import 'extensions.dart';
@@ -28,31 +28,29 @@ class ODPLinkListener extends StatefulWidget {
   State<ODPLinkListener> createState() => _ODPLinkListenerState();
 }
 
-class _ODPLinkListenerState extends State<ODPLinkListener> {
+class _ODPLinkListenerState extends State<ODPLinkListener>
+    with DynamicLinkHandler {
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    context.watch<DynamicLinksNotifier>().processLink((link) {
-      final solanaPayRequest = tryParseSolanaPayRequest(link);
-      if (solanaPayRequest != null) {
-        if (solanaPayRequest.splToken != Token.usdc.publicKey) {
-          // This is not USDC token, silently ignore for now
-          return true;
-        }
-
-        _processSolanaPayRequest(solanaPayRequest);
-
+  bool handleDynamicLink(Uri uri) {
+    final solanaPayRequest = tryParseSolanaPayRequest(uri);
+    if (solanaPayRequest != null) {
+      if (solanaPayRequest.splToken != Token.usdc.publicKey) {
+        // This is not USDC token, silently ignore for now
         return true;
       }
 
-      return false;
-    });
+      _processSolanaPayRequest(solanaPayRequest);
+
+      return true;
+    }
+
+    return false;
   }
 
   Future<void> _processSolanaPayRequest(SolanaPayRequest request) async {
     const fiat = Currency.usd;
     const crypto = Currency.usdc;
-    final rates = context.read<ConversionRatesRepository>();
+    final rates = sl<ConversionRatesRepository>();
 
     final amount = request.amount
         .maybeFlatMap((it) => Amount.fromDecimal(value: it, currency: crypto))
@@ -64,14 +62,22 @@ class _ODPLinkListenerState extends State<ODPLinkListener> {
         ? ''
         : amount.format(DeviceLocale.localeOf(context), skipSymbol: true);
 
-    final confirmedFiatAmount = await context.router.push<Decimal>(
-      ODPConfirmationScreen.route(
-        initialAmount: formatted,
-        recipient: request.recipient,
-        label: request.label,
-        token: crypto.token,
-        isEnabled: amount.value == 0,
-      ),
+    final isPaid = await context.isSolanaPayRequestPaid(request: request);
+    if (!mounted) return;
+
+    if (isPaid) {
+      showCpSnackbar(context, message: context.l10n.paymentRequestPaidMessage);
+
+      return;
+    }
+
+    final confirmedFiatAmount = await ODPConfirmationScreen.push(
+      context,
+      initialAmount: formatted,
+      recipient: request.recipient,
+      label: request.label,
+      token: crypto.token,
+      isEnabled: amount.value == 0,
     );
 
     if (confirmedFiatAmount == null) return;
@@ -91,7 +97,7 @@ class _ODPLinkListenerState extends State<ODPLinkListener> {
     );
 
     if (!mounted) return;
-    await context.router.push(ODPDetailsScreen.route(id: id));
+    ODPDetailsScreen.open(context, id: id);
   }
 
   @override

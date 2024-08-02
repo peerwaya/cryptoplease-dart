@@ -1,8 +1,8 @@
 import 'package:injectable/injectable.dart';
 
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../core/tokens/token.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../tokens/token.dart';
 import '../data/repository.dart';
 
 @injectable
@@ -24,10 +24,9 @@ class ConvertToUsd {
     required int amount,
   }) {
     const fiatCurrency = Currency.usd;
-    final conversionRate = _repository.readRate(
-      CryptoCurrency(token: token),
-      to: fiatCurrency,
-    );
+    final conversionRate =
+        _repository.readRate(CryptoCurrency(token: token), to: fiatCurrency);
+
     if (conversionRate == null) return null;
 
     final tokenAmount = Amount.fromToken(value: amount, token: token);

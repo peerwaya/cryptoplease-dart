@@ -4,7 +4,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:solana/solana.dart';
 import 'package:solana/solana_pay.dart';
 
-import '../../../core/link_payments.dart';
+import '../../../utils/solana_pay.dart';
+import '../../link_payments/models/link_payment.dart';
 import 'qr_address_data.dart';
 
 part 'qr_scanner_request.freezed.dart';
@@ -14,10 +15,14 @@ class QrScannerRequest with _$QrScannerRequest {
   const factory QrScannerRequest.solanaPay(SolanaPayRequest request) =
       QrScannerSolanaPayRequest;
 
+  const factory QrScannerRequest.transactionRequest(
+    SolanaTransactionRequest request,
+  ) = QrScannerSolanaPayTransactionRequest;
+
   const factory QrScannerRequest.address(QrAddressData addressData) =
       QrScannerAddressRequest;
 
-  const factory QrScannerRequest.linkPayment(LinkPayments payment) =
+  const factory QrScannerRequest.linkPayment(LinkPayment payment) =
       QrScannerLinkPayment;
 
   const QrScannerRequest._();
@@ -28,12 +33,23 @@ class QrScannerRequest with _$QrScannerRequest {
       return QrScannerRequest.address(address);
     }
 
-    final request = SolanaPayRequest.tryParse(code);
-    if (request != null) {
-      return QrScannerRequest.solanaPay(request);
+    final solanaPayRequest = SolanaPayRequest.tryParse(code);
+    if (solanaPayRequest != null) {
+      return QrScannerRequest.solanaPay(solanaPayRequest);
     }
 
-    final payment = Uri.tryParse(code)?.let(LinkPayments.tryParse);
+    final transactionRequest = SolanaTransactionRequest.tryParse(code);
+    if (transactionRequest != null) {
+      return QrScannerRequest.transactionRequest(transactionRequest);
+    }
+
+    final espressocashRequest =
+        Uri.tryParse(code)?.let(tryParseSolanaPayRequest);
+    if (espressocashRequest != null) {
+      return QrScannerRequest.solanaPay(espressocashRequest);
+    }
+
+    final payment = Uri.tryParse(code)?.let(LinkPayment.tryParse);
     if (payment != null) {
       return QrScannerRequest.linkPayment(payment);
     }
@@ -41,8 +57,12 @@ class QrScannerRequest with _$QrScannerRequest {
 
   Ed25519HDPublicKey? get recipient => this.map(
         solanaPay: (r) => r.request.recipient,
-        address: (r) => r.addressData.address,
+        address: (r) => switch (r.addressData) {
+          QrAddressDataSolana(:final address) => address,
+          QrAddressDataEvm() => null,
+        },
         linkPayment: always(null),
+        transactionRequest: always(null),
       );
 
   Ed25519HDPublicKey? get reference => whenOrNull<Ed25519HDPublicKey?>(

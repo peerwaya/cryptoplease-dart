@@ -2,12 +2,14 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:solana/solana_pay.dart';
 
 import '../../../config.dart';
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../core/tokens/token.dart';
-import '../../../core/tokens/token_list.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../tokens/token.dart';
+import '../../tokens/token_list.dart';
 
 part 'payment_request.freezed.dart';
+
+enum PaymentRequestState { initial, completed, error }
 
 @freezed
 class PaymentRequest with _$PaymentRequest {
@@ -16,17 +18,11 @@ class PaymentRequest with _$PaymentRequest {
     required DateTime created,
     required SolanaPayRequest payRequest,
     required String dynamicLink,
+    required String? shortLink,
     required PaymentRequestState state,
+    required String? transactionId,
+    required DateTime? resolvedAt,
   }) = _PaymentRequest;
-}
-
-@freezed
-class PaymentRequestState with _$PaymentRequestState {
-  const factory PaymentRequestState.initial() = PaymentRequestInitial;
-  const factory PaymentRequestState.completed({
-    required String transactionId,
-  }) = PaymentRequestCompleted;
-  const factory PaymentRequestState.failure() = PaymentRequestFailure;
 }
 
 extension SolanaPayRequestExt on SolanaPayRequest {
@@ -38,7 +34,7 @@ extension SolanaPayRequestExt on SolanaPayRequest {
       path: '/',
       host: espressoCashLinkDomain,
       queryParameters: {
-        't': 'solanapay',
+        't': 'espressopay',
         'recipient': link.path,
         ...link.queryParameters,
       },
@@ -63,4 +59,6 @@ extension SolanaPayRequestExt on SolanaPayRequest {
       value: currency.decimalToInt(amount),
     );
   }
+
+  String? get invoice => reference?.firstOrNull?.toBase58();
 }

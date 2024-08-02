@@ -2,32 +2,39 @@ import 'dart:async';
 
 import 'package:dfunc/dfunc.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:solana/dto.dart';
+import 'package:solana/encoder.dart';
 import 'package:solana/solana.dart';
 
+import '../../accounts/auth_scope.dart';
+import '../../accounts/models/account.dart';
+import '../../balances/services/refresh_balance.dart';
 import '../../transactions/services/tx_destinations.dart';
 import '../data/repository.dart';
 import '../models/outgoing_link_payment.dart';
 
-@injectable
-class TxReadyWatcher {
+@Singleton(scope: authScope)
+class TxReadyWatcher implements Disposable {
   TxReadyWatcher(
     this._client,
-    this._repository, {
-    @factoryParam required Ed25519HDPublicKey userPublicKey,
-  }) : _userPublicKey = userPublicKey;
+    this._repository,
+    this._refreshBalance, {
+    required MyAccount account,
+  }) : _userPublicKey = account.publicKey;
 
   final SolanaClient _client;
   final OLPRepository _repository;
   final Ed25519HDPublicKey _userPublicKey;
+  final RefreshBalance _refreshBalance;
 
   final Map<String, StreamSubscription<void>> _subscriptions = {};
   StreamSubscription<void>? _repoSubscription;
 
-  void init({required VoidCallback onBalanceAffected}) {
+  @postConstruct
+  void init() {
     _repoSubscription =
         _repository.watchReady().distinct().listen((payments) async {
       for (final payment in payments) {
@@ -53,11 +60,10 @@ class TxReadyWatcher {
               : OLPStatus.withdrawn(txId: txId, timestamp: timestamp);
 
           await _repository.save(payment.copyWith(status: newStatus));
-          await _subscriptions[payment.id]?.cancel();
-          _subscriptions.remove(payment.id);
+          await _subscriptions.remove(payment.id)?.cancel();
 
           if (newStatus is OLPStatusCanceled) {
-            onBalanceAffected();
+            _refreshBalance();
           }
         }
 
@@ -79,15 +85,24 @@ class TxReadyWatcher {
   }) {
     Duration backoff = const Duration(seconds: 1);
 
-    Stream<Iterable<TransactionDetails>> streamSignatures(void _) =>
+    Stream<IList<TransactionDetails>> streamSignatures(void _) =>
         _client.rpcClient
             .getTransactionsList(
               account,
-              limit: 2,
+              limit: 100,
               commitment: Commitment.confirmed,
               encoding: Encoding.jsonParsed,
             )
-            .asStream();
+            .asStream()
+            .map(
+              (txs) => txs
+                  .where(
+                    (details) => details.transaction
+                        .getSignatureAccounts()
+                        .contains(account),
+                  )
+                  .toIList(),
+            );
 
     Stream<void> retryWhen(void _, void __) async* {
       await Future<void>.delayed(backoff);
@@ -106,10 +121,28 @@ class TxReadyWatcher {
     );
   }
 
-  void dispose() {
+  @override
+  void onDispose() {
     _repoSubscription?.cancel();
     for (final subscription in _subscriptions.values) {
       subscription.cancel();
     }
   }
+}
+
+extension on Transaction {
+  List<Ed25519HDPublicKey> getSignatureAccounts() => switch (this) {
+        ParsedTransaction(:final signatures, :final message) => message
+            .accountKeys
+            .map((e) => Ed25519HDPublicKey.fromBase58(e.pubkey))
+            .take(signatures.length)
+            .toList(),
+        RawTransaction(:final data) => SignedTx.fromBytes(data).let(
+            (tx) => tx.compiledMessage.accountKeys
+                .take(tx.signatures.length)
+                .toList(),
+          ),
+        _ =>
+          throw UnsupportedError('Unsupported transaction type: $runtimeType'),
+      };
 }

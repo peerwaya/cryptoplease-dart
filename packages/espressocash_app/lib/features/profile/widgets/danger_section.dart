@@ -5,12 +5,13 @@ class DangerSection extends StatelessWidget {
 
   void _handleLogoutPressed(BuildContext context) => showConfirmationDialog(
         context,
-        title: context.l10n.signOut,
+        title: context.l10n.signOut.toUpperCase(),
         message: context.l10n.signOutConfirmation,
-        onConfirm: () {
-          context.read<AccountsBloc>().add(const AccountsEvent.loggedOut());
-        },
-        confirmLabel: context.l10n.yesDeleteMyWallet,
+        onConfirm: () => runWithLoader(
+          context,
+          () => sl<AccountService>().logOut(),
+        ),
+        cancelLabel: context.l10n.core_btnCancel,
       );
 
   @override
@@ -20,9 +21,11 @@ class DangerSection extends StatelessWidget {
           ProfileButton(
             label: context.l10n.signOut,
             onPressed: () => _handleLogoutPressed(context),
-            color: CpColors.primaryColor,
+            textColor: CpColors.dangerButtonTextColor,
+            backgroundColor: CpColors.darkOrangeButtonBackground,
+            iconColor: CpColors.dangerButtonChevronColor,
           ),
         ],
-        color: CpColors.primaryAccentColor,
+        color: CpColors.darkOrangeButtonBackground,
       );
 }

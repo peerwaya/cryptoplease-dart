@@ -13,26 +13,39 @@ import 'package:solana/solana.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../config.dart';
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../core/tokens/token_list.dart';
 import '../../../data/db/db.dart';
+import '../../../di.dart';
+import '../../accounts/auth_scope.dart';
 import '../../accounts/models/ec_wallet.dart';
-import '../../authenticated/auth_scope.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../ramp_partner/models/ramp_partner.dart';
+import '../../tokens/token_list.dart';
 import '../../transactions/models/tx_results.dart';
 import '../../transactions/services/resign_tx.dart';
 import '../../transactions/services/tx_sender.dart';
-import '../models/ramp_partner.dart';
+import '../models/ramp_watcher.dart';
+import '../partners/coinflow/services/coinflow_off_ramp_order_watcher.dart';
+import '../partners/kado/services/kado_off_ramp_order_watcher.dart';
+import '../partners/scalex/services/scalex_off_ramp_order_watcher.dart';
 
 typedef OffRampOrder = ({
   String id,
   DateTime created,
   OffRampOrderStatus status,
   CryptoAmount amount,
+  CryptoAmount? fee,
   RampPartner partner,
   DateTime? resolved,
   FiatAmount? receiveAmount,
   String partnerOrderId,
+  Ed25519HDPublicKey? depositAddress,
+  String? moreInfoUrl,
+  String? withdrawAnchorAccount,
+  String? withdrawUrl,
+  String? authToken,
+  String? referenceNumber,
+  CryptoAmount? bridgeAmount,
 });
 
 @Singleton(scope: authScope)
@@ -46,24 +59,33 @@ class OffRampOrderService implements Disposable {
   );
 
   final Map<String, StreamSubscription<void>> _subscriptions = {};
+  final Map<String, RampWatcher?> _watchers = {};
 
   final ECWallet _account;
-  final CryptopleaseClient _client;
+  final EspressoCashClient _client;
   final TxSender _sender;
   final MyDatabase _db;
   final TokenList _tokens;
 
-  @PostConstruct()
+  @PostConstruct(preResolve: true)
   Future<void> init() async {
     final query = _db.select(_db.offRampOrderRows)
       ..where(
-        (tbl) => tbl.status.equalsValue(OffRampOrderStatus.completed).not(),
+        (tbl) => tbl.status.isNotInValues([
+          OffRampOrderStatus.completed,
+          OffRampOrderStatus.cancelled,
+        ]),
       );
 
     final orders = await query.get();
 
     for (final order in orders) {
+      if (order.partner == RampPartner.moneygram) {
+        continue;
+      }
+
       _subscribe(order.id);
+      unawaited(_watch(order.id));
     }
   }
 
@@ -71,6 +93,12 @@ class OffRampOrderService implements Disposable {
     final query = _db.select(_db.offRampOrderRows)
       ..where(
         (tbl) => tbl.status.equalsValue(OffRampOrderStatus.completed).not(),
+      )
+      ..where(
+        (tbl) => tbl.status.equalsValue(OffRampOrderStatus.cancelled).not(),
+      )
+      ..where(
+        (tbl) => tbl.status.equalsValue(OffRampOrderStatus.refunded).not(),
       );
 
     return query
@@ -91,13 +119,38 @@ class OffRampOrderService implements Disposable {
         ),
       );
 
+      final fee = row.feeAmount?.let(
+        (amount) {
+          final token = row.feeToken;
+
+          if (token == null) return null;
+
+          return CryptoAmount(
+            value: amount,
+            cryptoCurrency: CryptoCurrency(
+              token: _tokens.requireTokenByMint(token),
+            ),
+          );
+        },
+      );
+
       final receiveAmount = row.receiveAmount?.let(
         (it) => Amount(
           value: it,
-          // ignore: avoid-non-null-assertion, checked amount
-          currency: currencyFromString(row.fiatSymbol!),
+          currency: currencyFromString(row.fiatSymbol ?? 'USD'),
         ) as FiatAmount,
       );
+
+      final bridgeAmount = row.bridgeAmount?.let(
+        (it) => Amount(
+          value: it,
+          currency: Currency.usdc,
+        ) as CryptoAmount,
+      );
+
+      final depositAddress = row.depositAddress
+          .maybeWhere((it) => it.isNotEmpty)
+          ?.let(Ed25519HDPublicKey.fromBase58);
 
       return (
         id: row.id,
@@ -108,6 +161,14 @@ class OffRampOrderService implements Disposable {
         resolved: row.resolvedAt,
         receiveAmount: receiveAmount,
         partnerOrderId: row.partnerOrderId,
+        depositAddress: depositAddress,
+        withdrawAnchorAccount: row.withdrawAnchorAccount,
+        moreInfoUrl: row.moreInfoUrl,
+        fee: fee,
+        withdrawUrl: row.withdrawUrl,
+        authToken: row.authToken,
+        referenceNumber: row.referenceNumber,
+        bridgeAmount: bridgeAmount,
       );
     });
   }
@@ -129,6 +190,7 @@ class OffRampOrderService implements Disposable {
         );
       case OffRampOrderStatus.depositError:
       case OffRampOrderStatus.depositTxConfirmError:
+      case OffRampOrderStatus.insufficientFunds:
         final tx = order.transaction;
         if (tx.isEmpty) {
           await updateQuery.write(
@@ -145,9 +207,15 @@ class OffRampOrderService implements Disposable {
         }
       case OffRampOrderStatus.creatingDepositTx:
       case OffRampOrderStatus.depositTxReady:
+      case OffRampOrderStatus.preProcessing:
+      case OffRampOrderStatus.postProcessing:
+      case OffRampOrderStatus.ready:
       case OffRampOrderStatus.sendingDepositTx:
       case OffRampOrderStatus.waitingForPartner:
       case OffRampOrderStatus.failure:
+      case OffRampOrderStatus.processingRefund:
+      case OffRampOrderStatus.waitingForRefundBridge:
+      case OffRampOrderStatus.refunded:
       case OffRampOrderStatus.completed:
       case OffRampOrderStatus.cancelled:
         break;
@@ -164,21 +232,26 @@ class OffRampOrderService implements Disposable {
 
     switch (order.status) {
       case OffRampOrderStatus.depositError:
-        await updateQuery.write(
-          const OffRampOrderRowsCompanion(
-            status: Value(OffRampOrderStatus.cancelled),
-          ),
-        );
-
+      case OffRampOrderStatus.insufficientFunds:
+        await updateQuery.write(_cancelled);
+      case OffRampOrderStatus.ready:
+        if (order.partner == RampPartner.moneygram) {
+          await updateQuery.write(_processRefund);
+        }
       case OffRampOrderStatus.depositTxRequired:
       case OffRampOrderStatus.creatingDepositTx:
       case OffRampOrderStatus.depositTxReady:
       case OffRampOrderStatus.sendingDepositTx:
       case OffRampOrderStatus.waitingForPartner:
       case OffRampOrderStatus.failure:
+      case OffRampOrderStatus.processingRefund:
+      case OffRampOrderStatus.waitingForRefundBridge:
       case OffRampOrderStatus.completed:
       case OffRampOrderStatus.cancelled:
       case OffRampOrderStatus.depositTxConfirmError:
+      case OffRampOrderStatus.preProcessing:
+      case OffRampOrderStatus.postProcessing:
+      case OffRampOrderStatus.refunded:
         break;
     }
   }
@@ -189,7 +262,9 @@ class OffRampOrderService implements Disposable {
     required CryptoAmount amount,
     required RampPartner partner,
     required String depositAddress,
+    (SignedTx, BigInt)? transaction,
     FiatAmount? receiveAmount,
+    CryptoAmount? fee,
   }) =>
       tryEitherAsync((_) async {
         {
@@ -201,21 +276,67 @@ class OffRampOrderService implements Disposable {
             humanStatus: '',
             machineStatus: '',
             partnerOrderId: partnerOrderId,
-            transaction: '',
-            slot: BigInt.zero,
-            status: OffRampOrderStatus.depositTxRequired,
+            transaction: transaction?.$1.encode() ?? '',
+            slot: transaction?.$2 ?? BigInt.zero,
+            status: transaction == null
+                ? OffRampOrderStatus.depositTxRequired
+                : OffRampOrderStatus.depositTxReady,
             depositAddress: depositAddress,
             partner: partner,
             receiveAmount: receiveAmount?.value,
             fiatSymbol: receiveAmount?.currency.symbol,
+            feeAmount: fee?.value,
+            feeToken: fee?.token.address,
           );
 
           await _db.into(_db.offRampOrderRows).insert(order);
           _subscribe(order.id);
+          await _watch(order.id);
 
           return order.id;
         }
       });
+
+  @useResult
+  AsyncResult<String> createFromTx({
+    required SignedTx tx,
+    required CryptoAmount amount,
+    required RampPartner partner,
+    required BigInt slot,
+    FiatAmount? receiveAmount,
+  }) =>
+      tryEitherAsync((bind) async {
+        {
+          final signed = await tx.let((it) => it.resign(_account));
+
+          return create(
+            partnerOrderId: signed.id,
+            amount: amount,
+            partner: partner,
+            depositAddress: '',
+            receiveAmount: receiveAmount,
+            transaction: (signed, slot),
+          ).letAsync(bind);
+        }
+      });
+
+  Future<void> _watch(String orderId) async {
+    final query = _db.select(_db.offRampOrderRows)
+      ..where((tbl) => tbl.id.equals(orderId));
+
+    final order = await query.getSingle();
+
+    _watchers[orderId] = switch (order.partner) {
+      RampPartner.kado => sl<KadoOffRampOrderWatcher>(),
+      RampPartner.scalex => sl<ScalexOffRampOrderWatcher>(),
+      RampPartner.coinflow => sl<CoinflowOffRampOrderWatcher>(),
+      RampPartner.rampNetwork ||
+      RampPartner.moneygram || // moneygram orders will not reach this point
+      RampPartner.guardarian =>
+        throw ArgumentError('Not implemented'),
+    }
+      ..watch(orderId);
+  }
 
   void _subscribe(String orderId) {
     _subscriptions[orderId] = (_db.select(_db.offRampOrderRows)
@@ -226,14 +347,24 @@ class OffRampOrderService implements Disposable {
         case OffRampOrderStatus.depositTxRequired:
         case OffRampOrderStatus.depositError:
         case OffRampOrderStatus.depositTxConfirmError:
+        case OffRampOrderStatus.preProcessing:
+        case OffRampOrderStatus.postProcessing:
+        case OffRampOrderStatus.ready:
+        case OffRampOrderStatus.insufficientFunds:
         case OffRampOrderStatus.waitingForPartner:
           return const Stream.empty();
         case OffRampOrderStatus.creatingDepositTx:
           return Stream.fromFuture(
-            _createTx(
-              amount: _amount(order),
-              receiver: Ed25519HDPublicKey.fromBase58(order.depositAddress),
-            ),
+            order.partner == RampPartner.scalex
+                ? _createScalexTx(
+                    partnerOrderId: order.partnerOrderId,
+                  )
+                : _createTx(
+                    amount: _amount(order),
+                    receiver: Ed25519HDPublicKey.fromBase58(
+                      order.depositAddress,
+                    ),
+                  ),
           ).onErrorReturn(
             const OffRampOrderRowsCompanion(
               status: Value(OffRampOrderStatus.depositError),
@@ -251,11 +382,15 @@ class OffRampOrderService implements Disposable {
             ),
           );
         case OffRampOrderStatus.cancelled:
-          return Stream.fromIterable([_cancelled]);
         case OffRampOrderStatus.failure:
+        case OffRampOrderStatus.processingRefund:
+        case OffRampOrderStatus.waitingForRefundBridge:
+        case OffRampOrderStatus.refunded:
         case OffRampOrderStatus.completed:
-          _subscriptions[orderId]?.cancel();
-          _subscriptions.remove(orderId);
+          _subscriptions.remove(orderId)?.cancel();
+
+          _watchers[orderId]?.close();
+          _watchers.remove(orderId);
 
           return const Stream.empty();
       }
@@ -269,6 +404,7 @@ class OffRampOrderService implements Disposable {
   @override
   Future<void> onDispose() async {
     await Future.wait(_subscriptions.values.map((it) => it.cancel()));
+    _watchers.values.map((it) => it?.close());
     await _db.delete(_db.offRampOrderRows).go();
   }
 
@@ -291,15 +427,39 @@ class OffRampOrderService implements Disposable {
       cluster: apiCluster,
     );
     final response = await _client.createDirectPayment(dto);
-    final tx = await response
-        .let((it) => it.transaction)
-        .let(SignedTx.decode)
-        .let((it) => it.resign(_account));
+
+    return _signAndUpdateRow(
+      encodedTx: response.transaction,
+      slot: response.slot,
+    );
+  }
+
+  Future<OffRampOrderRowsCompanion> _createScalexTx({
+    required String partnerOrderId,
+  }) async {
+    final dto = ScalexWithdrawRequestDto(
+      orderId: partnerOrderId,
+      cluster: apiCluster,
+    );
+    final response = await _client.createScalexWithdraw(dto);
+
+    return _signAndUpdateRow(
+      encodedTx: response.transaction,
+      slot: response.slot,
+    );
+  }
+
+  Future<OffRampOrderRowsCompanion> _signAndUpdateRow({
+    required String encodedTx,
+    required BigInt slot,
+  }) async {
+    final tx =
+        await SignedTx.decode(encodedTx).let((it) => it.resign(_account));
 
     return OffRampOrderRowsCompanion(
       status: const Value(OffRampOrderStatus.depositTxReady),
       transaction: Value(tx.encode()),
-      slot: Value(response.slot),
+      slot: Value(slot),
     );
   }
 
@@ -309,9 +469,16 @@ class OffRampOrderService implements Disposable {
       case TxSendSent():
         break;
       case TxSendInvalidBlockhash():
-      case TxSendFailure():
         return OffRampOrderRowsCompanion(
           status: const Value(OffRampOrderStatus.depositError),
+          transaction: const Value(''),
+          slot: Value(BigInt.zero),
+        );
+      case TxSendFailure(:final reason):
+        return OffRampOrderRowsCompanion(
+          status: reason == TxFailureReason.insufficientFunds
+              ? const Value(OffRampOrderStatus.insufficientFunds)
+              : const Value(OffRampOrderStatus.depositError),
           transaction: const Value(''),
           slot: Value(BigInt.zero),
         );
@@ -319,15 +486,21 @@ class OffRampOrderService implements Disposable {
         return _depositError;
     }
 
-    final confirmed = await _sender.wait(tx.$1, minContextSlot: tx.$2);
+    final confirmed = await _sender.wait(
+      tx.$1,
+      minContextSlot: tx.$2,
+      txType: 'OffRamp',
+    );
     switch (confirmed) {
       case TxWaitSuccess():
         return const OffRampOrderRowsCompanion(
           status: Value(OffRampOrderStatus.waitingForPartner),
         );
-      case TxWaitFailure():
+      case TxWaitFailure(:final reason):
         return OffRampOrderRowsCompanion(
-          status: const Value(OffRampOrderStatus.depositError),
+          status: reason == TxFailureReason.insufficientFunds
+              ? const Value(OffRampOrderStatus.insufficientFunds)
+              : const Value(OffRampOrderStatus.depositTxConfirmError),
           transaction: const Value(''),
           slot: Value(BigInt.zero),
         );
@@ -343,5 +516,9 @@ class OffRampOrderService implements Disposable {
 
   static const _depositError = OffRampOrderRowsCompanion(
     status: Value(OffRampOrderStatus.depositTxConfirmError),
+  );
+
+  static const _processRefund = OffRampOrderRowsCompanion(
+    status: Value(OffRampOrderStatus.processingRefund),
   );
 }

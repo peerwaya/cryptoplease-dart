@@ -33,7 +33,6 @@ const lamportsPerSignature = 5000;
 
 const termsUrl = 'https://espressocash.com/docs/legal/terms';
 const privacyUrl = 'https://espressocash.com/docs/legal/privacy';
-const contactEmail = 'contact@espressocash.com';
 
 /// Currently, the rent cost is fixed at the genesis. However, it's anticipated
 /// to be dynamic, reflecting the underlying hardware storage cost at the time.
@@ -46,7 +45,7 @@ const contactEmail = 'contact@espressocash.com';
 /// It's pre-calculated for `TokenProgram.neededAccountSpace = 165`.
 const int tokenProgramRent = 2039280;
 
-const Duration waitForSignatureDefaultTimeout = Duration(seconds: 25);
+const Duration waitForSignatureDefaultTimeout = Duration(seconds: 90);
 const Duration pingDefaultInterval = Duration(seconds: 1);
 
 const _mainNetChainId = 101;
@@ -70,7 +69,19 @@ const rampApiKey = String.fromEnvironment('RAMP_API_KEY');
 const guardarianBaseUrl = 'https://guardarian.com/calculator/v1';
 const guardarianApiKey = String.fromEnvironment('GUARDARIAN_API_KEY');
 
+const coinflowApiUrl = isProd
+    ? 'https://api.coinflow.cash/api/'
+    : 'https://api-sandbox.coinflow.cash/api/';
+
+const coinflowKycUrl = isProd
+    ? 'https://coinflow.cash/withdraw/espresso'
+    : 'https://sandbox.coinflow.cash/withdraw/espresso';
+
 const maxPayloadsPerSigningRequest = 10;
 
 const playstoreName = 'com.pleasecrypto.flutter';
 const appstoreId = '1559625715';
+
+const intercomAppId = String.fromEnvironment('INTERCOM_APP_ID');
+const intercomIosKey = String.fromEnvironment('INTERCOM_IOS_KEY');
+const intercomAndroidKey = String.fromEnvironment('INTERCOM_ANDROID_KEY');

@@ -1,27 +1,46 @@
 // ignore_for_file: avoid-non-null-assertion
 
+import 'dart:async';
+
 import 'package:dfunc/dfunc.dart';
 import 'package:drift/drift.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
+import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:solana/encoder.dart';
 import 'package:solana/solana.dart';
 
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../core/tokens/token_list.dart';
 import '../../../data/db/db.dart';
 import '../../../data/db/mixins.dart';
+import '../../accounts/auth_scope.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../tokens/token_list.dart';
 import '../../transactions/models/tx_results.dart';
 import '../models/outgoing_direct_payment.dart';
 
-@injectable
-class ODPRepository {
+@Singleton(scope: authScope)
+class ODPRepository implements Disposable {
   const ODPRepository(this._db, this._tokens);
 
   final MyDatabase _db;
   final TokenList _tokens;
+
+  Future<IList<String>> getNonCompletedPaymentIds() async {
+    final query = _db.select(_db.oDPRows)
+      ..where(
+        (p) => p.status.isNotInValues([
+          ODPStatusDto.success,
+          ODPStatusDto.txFailure,
+          ODPStatusDto.txSendFailure,
+          ODPStatusDto.txWaitFailure,
+        ]),
+      );
+
+    final rows = await query.get();
+
+    return rows.map((row) => row.id).toIList();
+  }
 
   Future<OutgoingDirectPayment?> load(String id) {
     final query = _db.select(_db.oDPRows)..where((p) => p.id.equals(id));
@@ -36,45 +55,15 @@ class ODPRepository {
   }
 
   Future<void> save(OutgoingDirectPayment payment) async {
-    await payment.status.maybeMap(
-      txFailure: (status) async {
-        await Sentry.captureMessage(
-          'ODP tx failure',
-          level: SentryLevel.warning,
-          withScope: (scope) => scope.setContexts('data', {
-            'reason': status.reason,
-          }),
-        );
-      },
-      orElse: () async {},
-    );
-
     await _db.into(_db.oDPRows).insertOnConflictUpdate(payment.toDto());
   }
 
-  Future<void> clear() => _db.delete(_db.oDPRows).go();
-
-  Stream<IList<OutgoingDirectPayment>> watchTxCreated() => _watchWithStatuses([
-        ODPStatusDto.txCreated,
-        ODPStatusDto.txSendFailure,
-      ]);
-
-  Stream<IList<OutgoingDirectPayment>> watchTxSent() => _watchWithStatuses([
-        ODPStatusDto.txSent,
-        ODPStatusDto.txWaitFailure,
-      ]);
-
-  Stream<IList<OutgoingDirectPayment>> _watchWithStatuses(
-    Iterable<ODPStatusDto> statuses,
-  ) {
-    final query = _db.select(_db.oDPRows)
-      ..where((p) => p.status.isInValues(statuses));
-
-    return query
-        .watch()
-        .map((rows) => rows.map((row) => row.toModel(_tokens)))
-        .map((event) => event.toIList());
+  Future<void> delete(String id) async {
+    await (_db.delete(_db.oDPRows)..where((p) => p.id.equals(id))).go();
   }
+
+  @override
+  Future<void> onDispose() => _db.delete(_db.oDPRows).go();
 }
 
 class ODPRows extends Table with AmountMixin, EntityMixin {

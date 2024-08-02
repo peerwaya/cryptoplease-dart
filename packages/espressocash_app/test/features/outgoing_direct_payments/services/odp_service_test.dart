@@ -3,17 +3,16 @@ import 'dart:typed_data';
 
 import 'package:dfunc/dfunc.dart';
 import 'package:espressocash_api/espressocash_api.dart';
-import 'package:espressocash_app/core/amount.dart';
-import 'package:espressocash_app/core/currency.dart';
-import 'package:espressocash_app/core/tokens/token.dart';
 import 'package:espressocash_app/features/accounts/models/ec_wallet.dart';
+import 'package:espressocash_app/features/currency/models/amount.dart';
+import 'package:espressocash_app/features/currency/models/currency.dart';
 import 'package:espressocash_app/features/outgoing_direct_payments/data/repository.dart';
 import 'package:espressocash_app/features/outgoing_direct_payments/models/outgoing_direct_payment.dart';
 import 'package:espressocash_app/features/outgoing_direct_payments/services/odp_service.dart';
-import 'package:espressocash_app/features/outgoing_direct_payments/services/tx_created_watcher.dart';
-import 'package:espressocash_app/features/outgoing_direct_payments/services/tx_sent_watcher.dart';
+import 'package:espressocash_app/features/tokens/token.dart';
 import 'package:espressocash_app/features/transactions/models/tx_results.dart';
 import 'package:espressocash_app/features/transactions/services/tx_sender.dart';
+
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -22,16 +21,14 @@ import 'package:rxdart/rxdart.dart';
 import 'package:solana/encoder.dart';
 import 'package:solana/solana.dart';
 
+import '../../../stub_analytics_manager.dart';
 import 'odp_service_test.mocks.dart';
 
 final sender = MockTxSender();
-final client = MockCryptopleaseClient();
+final client = MockEspressoCashClient();
 
-@GenerateMocks([TxSender, CryptopleaseClient])
+@GenerateMocks([TxSender, EspressoCashClient])
 Future<void> main() async {
-  late TxCreatedWatcher txCreatedWatcher;
-  late TxSentWatcher txSentWatcher;
-
   final account = LocalWallet(await Ed25519HDKeyPair.random());
   final receiver = await Ed25519HDKeyPair.random();
   final repository = MemoryRepository();
@@ -39,18 +36,11 @@ Future<void> main() async {
   setUp(() {
     reset(sender);
     reset(client);
-
-    txCreatedWatcher = TxCreatedWatcher(repository, sender)
-      ..call(onBalanceAffected: ignore);
-    txSentWatcher = TxSentWatcher(repository, sender)
-      ..call(onBalanceAffected: ignore);
   });
 
   tearDown(
     () async {
-      txCreatedWatcher.dispose();
-      txSentWatcher.dispose();
-      await repository.clear();
+      await repository.onDispose();
     },
   );
 
@@ -82,7 +72,12 @@ Future<void> main() async {
     cryptoCurrency: CryptoCurrency(token: Token.usdc),
   );
 
-  ODPService createService() => ODPService(client, repository);
+  ODPService createService() => ODPService(
+        client,
+        repository,
+        sender,
+        const StubAnalyticsManager(),
+      );
 
   Future<String> createODP(ODPService service) async {
     final payment = await service.create(
@@ -104,8 +99,13 @@ Future<void> main() async {
 
     when(sender.send(any, minContextSlot: anyNamed('minContextSlot')))
         .thenAnswer((_) async => const TxSendResult.sent());
-    when(sender.wait(any, minContextSlot: anyNamed('minContextSlot')))
-        .thenAnswer((_) async => const TxWaitResult.success());
+    when(
+      sender.wait(
+        any,
+        minContextSlot: anyNamed('minContextSlot'),
+        txType: anyNamed('txType'),
+      ),
+    ).thenAnswer((_) async => const TxWaitResult.success());
 
     final paymentId = await createService().let(createODP);
     final payment = repository.watch(paymentId);
@@ -126,8 +126,13 @@ Future<void> main() async {
 
     verify(sender.send(any, minContextSlot: anyNamed('minContextSlot')))
         .called(1);
-    verify(sender.wait(any, minContextSlot: anyNamed('minContextSlot')))
-        .called(1);
+    verify(
+      sender.wait(
+        any,
+        minContextSlot: anyNamed('minContextSlot'),
+        txType: anyNamed('txType'),
+      ),
+    ).called(1);
   });
 
   test('Failed to get tx from API', () async {
@@ -154,7 +159,13 @@ Future<void> main() async {
     );
 
     verifyNever(sender.send(any, minContextSlot: anyNamed('minContextSlot')));
-    verifyNever(sender.wait(any, minContextSlot: anyNamed('minContextSlot')));
+    verifyNever(
+      sender.wait(
+        any,
+        minContextSlot: anyNamed('minContextSlot'),
+        txType: anyNamed('txType'),
+      ),
+    );
   });
 }
 
@@ -172,8 +183,13 @@ class MemoryRepository implements ODPRepository {
   }
 
   @override
-  Future<void> clear() async {
+  Future<void> onDispose() async {
     _data.add(_data.value.clear());
+  }
+
+  @override
+  Future<void> delete(String id) async {
+    _data.add(_data.value.remove(id));
   }
 
   @override
@@ -182,16 +198,17 @@ class MemoryRepository implements ODPRepository {
       _data.stream.map((it) => it[id]!);
 
   @override
-  Stream<IList<OutgoingDirectPayment>> watchTxCreated() => _data.stream.map(
+  Future<IList<String>> getNonCompletedPaymentIds() => _data.stream
+      .map(
         (it) => it.values
-            .where((it) => it.status.maybeMap(orElse: F, txCreated: T))
+            .where(
+              (it) => switch (it.status) {
+                ODPStatusTxCreated() || ODPStatusTxSent() => true,
+                ODPStatusSuccess() || ODPStatusTxFailure() => false,
+              },
+            )
+            .map((e) => e.id)
             .toIList(),
-      );
-
-  @override
-  Stream<IList<OutgoingDirectPayment>> watchTxSent() => _data.stream.map(
-        (it) => it.values
-            .where((it) => it.status.maybeMap(orElse: F, txSent: T))
-            .toIList(),
-      );
+      )
+      .first;
 }

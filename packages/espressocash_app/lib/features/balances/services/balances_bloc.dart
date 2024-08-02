@@ -1,24 +1,26 @@
 import 'dart:async';
 
 import 'package:bloc_concurrency/bloc_concurrency.dart';
+import 'package:collection/collection.dart';
 import 'package:dfunc/dfunc.dart';
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:logging/logging.dart';
-import 'package:meta/meta.dart';
 import 'package:solana/dto.dart';
 import 'package:solana/solana.dart';
 
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../core/disposable_bloc.dart';
-import '../../../core/processing_state.dart';
-import '../../../core/solana_helpers.dart';
-import '../../../core/tokens/token.dart';
-import '../../../core/tokens/token_list.dart';
-import '../../authenticated/auth_scope.dart';
-import '../data/balances_repository.dart';
+import '../../../utils/disposable_bloc.dart';
+import '../../../utils/processing_state.dart';
+import '../../accounts/auth_scope.dart';
+import '../../analytics/analytics_manager.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../tokens/token.dart';
+import '../../tokens/token_list.dart';
+import '../data/repository.dart';
+
+part 'balances_bloc.freezed.dart';
 
 final _logger = Logger('BalancesBloc');
 typedef BalancesState = ProcessingState;
@@ -29,27 +31,27 @@ class BalancesBloc extends Bloc<BalancesEvent, BalancesState>
   BalancesBloc(
     this._solanaClient,
     this._tokens,
-    this._repository,
+    this._tokensRepository,
+    this._analyticsManager,
   ) : super(const ProcessingStateNone()) {
     on<BalancesEventRequested>(_handleRequested, transformer: droppable());
   }
 
   final SolanaClient _solanaClient;
   final TokenList _tokens;
-  final BalancesRepository _repository;
+  final TokenBalancesRepository _tokensRepository;
+  final AnalyticsManager _analyticsManager;
 
   Future<void> _handleRequested(
     BalancesEventRequested event,
     Emitter<BalancesState> emit,
   ) async {
-    final balances = <Token, CryptoAmount>{};
-
     try {
       emit(const ProcessingState.processing());
-      balances[Token.sol] = await _solanaClient.getSolBalance(event.address);
+
+      final sol = await _solanaClient.getSolBalance(event.address);
 
       final allAccounts = await _solanaClient.getSplAccounts(event.address);
-
       final mainAccounts = await Future.wait<_MainTokenAccount?>(
         allAccounts.map((programAccount) async {
           final account = programAccount.account;
@@ -72,20 +74,25 @@ class BalancesBloc extends Bloc<BalancesEvent, BalancesState>
       ).then(compact);
 
       final tokenBalances = mainAccounts.map(
-        (a) => MapEntry(
-          a.token,
-          CryptoAmount(
-            value: int.parse(a.info.tokenAmount.amount),
-            cryptoCurrency: CryptoCurrency(token: a.token),
-          ),
+        (a) => CryptoAmount(
+          value: int.parse(a.info.tokenAmount.amount),
+          cryptoCurrency: CryptoCurrency(token: a.token),
         ),
       );
-      balances.addEntries(tokenBalances);
+
+      final usdcBalance = tokenBalances.firstWhereOrNull(
+        (balance) => balance.cryptoCurrency.token == Token.usdc,
+      );
 
       if (isClosed) return;
 
       emit(const ProcessingState.none());
-      _repository.saveAll(balances.lock);
+
+      if (usdcBalance != null) {
+        _analyticsManager.setUsdcBalance(usdcBalance.decimal);
+      }
+
+      await _tokensRepository.save([...tokenBalances, sol]);
     } on Exception catch (exception) {
       _logger.severe('Failed to fetch balances', exception);
 
@@ -95,21 +102,6 @@ class BalancesBloc extends Bloc<BalancesEvent, BalancesState>
       emit(const ProcessingState.none());
     }
   }
-}
-
-sealed class BalancesEvent {
-  const BalancesEvent();
-}
-
-@immutable
-final class BalancesEventRequested extends BalancesEvent {
-  const BalancesEventRequested({required this.address});
-
-  final String address;
-}
-
-class BalancesRequestException implements Exception {
-  const BalancesRequestException();
 }
 
 class _MainTokenAccount {
@@ -138,19 +130,15 @@ class _MainTokenAccount {
   final String pubKey;
 }
 
-extension SortedBalance on Map<Token, Amount> {
-  Iterable<MapEntry<Token, Amount>> _splitAndSort(
-    Func1<MapEntry<Token, Amount>, bool> test,
-  ) =>
-      entries.where(test).toList()
-        ..sort((e1, e2) => e2.value.value.compareTo(e1.value.value));
+class BalancesRequestException implements Exception {
+  const BalancesRequestException();
+}
 
-  Map<Token, Amount> get sorted {
-    final geckoEntries = _splitAndSort((e) => e.key.coingeckoId != null);
-    final notGeckoEntries = _splitAndSort((e) => e.key.coingeckoId == null);
-
-    return Map.fromEntries(geckoEntries)..addEntries(notGeckoEntries);
-  }
+@freezed
+sealed class BalancesEvent with _$BalancesEvent {
+  const factory BalancesEvent.refreshRequested({
+    required String address,
+  }) = BalancesEventRequested;
 }
 
 extension on SolanaClient {
@@ -164,4 +152,13 @@ extension on SolanaClient {
 
     return CryptoAmount(value: lamports, cryptoCurrency: Currency.sol);
   }
+
+  Future<Iterable<ProgramAccount>> getSplAccounts(String address) => rpcClient
+      .getTokenAccountsByOwner(
+        address,
+        const TokenAccountsFilter.byProgramId(TokenProgram.programId),
+        commitment: Commitment.confirmed,
+        encoding: Encoding.jsonParsed,
+      )
+      .value;
 }

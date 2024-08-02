@@ -10,8 +10,9 @@ workflows:
       groups:
         - common
         - google_credentials
-      flutter: 3.16.2
-      xcode: 15.0
+      flutter: 3.22.2
+      xcode: 15.3
+      java: 17
       cocoapods: 1.13.0
       android_signing:
         - app
@@ -42,7 +43,11 @@ workflows:
             --dart-define SENTRY_DSN=$SENTRY_DSN \
             --dart-define RAMP_API_KEY=$RAMP_API_KEY \
             --dart-define KADO_API_KEY=$KADO_API_KEY \
-            --dart-define GUARDARIAN_API_KEY=$GUARDARIAN_API_KEY
+            --dart-define GUARDARIAN_API_KEY=$GUARDARIAN_API_KEY \
+            --dart-define INTERCOM_APP_ID=$INTERCOM_APP_ID \
+            --dart-define INTERCOM_IOS_KEY=$INTERCOM_IOS_KEY \
+            --dart-define INTERCOM_ANDROID_KEY=$INTERCOM_ANDROID_KEY \
+            --dart-define MIXPANEL_TOKEN=$MIXPANEL_TOKEN
       - name: Build IPA with Flutter
         script: |
           BUILD_NUMBER=$(($PROJECT_BUILD_NUMBER + 200))
@@ -55,7 +60,11 @@ workflows:
             --dart-define SENTRY_DSN=$SENTRY_DSN \
             --dart-define RAMP_API_KEY=$RAMP_API_KEY \
             --dart-define KADO_API_KEY=$KADO_API_KEY \
-            --dart-define GUARDARIAN_API_KEY=$GUARDARIAN_API_KEY
+            --dart-define GUARDARIAN_API_KEY=$GUARDARIAN_API_KEY \
+            --dart-define INTERCOM_APP_ID=$INTERCOM_APP_ID \
+            --dart-define INTERCOM_IOS_KEY=$INTERCOM_IOS_KEY \
+            --dart-define INTERCOM_ANDROID_KEY=$INTERCOM_ANDROID_KEY \
+            --dart-define MIXPANEL_TOKEN=$MIXPANEL_TOKEN
 
     artifacts:
       - build/**/outputs/**/*.aab

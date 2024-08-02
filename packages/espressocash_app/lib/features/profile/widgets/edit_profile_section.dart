@@ -5,17 +5,12 @@ class EditProfileSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ProfileSection(
-        padding: const EdgeInsets.fromLTRB(8, 16, 2, 24),
+        padding: const EdgeInsets.fromLTRB(8, 16, 2, 16),
         actions: [
           ProfileButton(
             label: context.l10n.editProfile,
-            onPressed: () => context.router.push(
-              ManageProfileScreen.route(
-                onSubmitted: () => context.router.pop(),
-              ),
-            ),
+            onPressed: () => ManageProfileScreen.push(context),
           ),
-          const InvestmentsZeroBalanceSwitch(),
         ],
       );
 }

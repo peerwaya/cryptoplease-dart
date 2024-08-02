@@ -3,22 +3,23 @@
 import 'package:dfunc/dfunc.dart';
 import 'package:drift/drift.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
+import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:solana/base58.dart';
 import 'package:solana/encoder.dart';
 
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../core/escrow_private_key.dart';
-import '../../../core/tokens/token_list.dart';
 import '../../../data/db/db.dart';
 import '../../../data/db/mixins.dart';
+import '../../accounts/auth_scope.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../escrow/models/escrow_private_key.dart';
+import '../../tokens/token_list.dart';
 import '../../transactions/models/tx_results.dart';
 import '../models/outgoing_link_payment.dart';
 
-@injectable
-class OLPRepository {
+@Singleton(scope: authScope)
+class OLPRepository implements Disposable {
   const OLPRepository(this._db, this._tokens);
 
   final MyDatabase _db;
@@ -31,28 +32,6 @@ class OLPRepository {
   }
 
   Future<void> save(OutgoingLinkPayment payment) async {
-    await payment.status.maybeMap(
-      txFailure: (status) async {
-        await Sentry.captureMessage(
-          'OLP tx failure',
-          level: SentryLevel.warning,
-          withScope: (scope) => scope.setContexts('data', {
-            'reason': status.reason,
-          }),
-        );
-      },
-      cancelTxFailure: (status) async {
-        await Sentry.captureMessage(
-          'OLP cancel tx failure',
-          level: SentryLevel.warning,
-          withScope: (scope) => scope.setContexts('data', {
-            'reason': status.reason,
-          }),
-        );
-      },
-      orElse: () async {},
-    );
-
     await _db.into(_db.oLPRows).insertOnConflictUpdate(await payment.toDto());
   }
 
@@ -92,7 +71,8 @@ class OLPRepository {
         OLPStatusDto.cancelTxSent,
       ]);
 
-  Future<void> clear() => _db.delete(_db.oLPRows).go();
+  @override
+  Future<void> onDispose() => _db.delete(_db.oLPRows).go();
 
   Stream<IList<OutgoingLinkPayment>> _watchWithStatuses(
     Iterable<OLPStatusDto> statuses,
@@ -104,6 +84,18 @@ class OLPRepository {
         .watch()
         .map((rows) => rows.map((row) => row.toModel(_tokens)))
         .map((event) => event.toIList());
+  }
+
+  Future<IList<String>> getNonCompletedPaymentIds() {
+    final query = _db.select(_db.oLPRows)
+      ..where(
+        (p) => p.status.isNotInValues([
+          OLPStatusDto.withdrawn,
+          OLPStatusDto.canceled,
+        ]),
+      );
+
+    return query.get().then((rows) => rows.map((row) => row.id).toIList());
   }
 }
 
@@ -129,6 +121,7 @@ class OLPRows extends Table with AmountMixin, EntityMixin {
 enum OLPStatusDto {
   txCreated,
   txSent,
+  // legacy
   txConfirmed,
   linkReady,
   txFailure,
@@ -160,25 +153,23 @@ extension on OLPStatusDto {
     final escrow = row.privateKey?.let(base58decode).let(EscrowPrivateKey.new);
     final cancelTx = row.cancelTx?.let(SignedTx.decode);
     final resolvedAt = row.resolvedAt;
-    final slot = row.slot?.let(BigInt.tryParse);
 
     switch (this) {
+      case OLPStatusDto.txConfirmed:
       case OLPStatusDto.txCreated:
         return OLPStatus.txCreated(
           tx!,
           escrow: escrow!,
-          slot: slot ?? BigInt.zero,
         );
+
       case OLPStatusDto.txSent:
         final txId = row.txId;
 
         return OLPStatus.txSent(
           tx ?? StubSignedTx(txId!),
           escrow: escrow!,
-          slot: slot ?? BigInt.zero,
+          signature: row.txId ?? '',
         );
-      case OLPStatusDto.txConfirmed:
-        return OLPStatus.txConfirmed(escrow: escrow!);
       case OLPStatusDto.linkReady:
         final link = row.link?.let(Uri.parse);
 
@@ -198,7 +189,6 @@ extension on OLPStatusDto {
         return OLPStatus.cancelTxCreated(
           cancelTx!,
           escrow: escrow!,
-          slot: slot ?? BigInt.zero,
         );
       case OLPStatusDto.cancelTxFailure:
         return OLPStatus.cancelTxFailure(
@@ -209,7 +199,7 @@ extension on OLPStatusDto {
         return OLPStatus.cancelTxSent(
           cancelTx!,
           escrow: escrow!,
-          slot: slot ?? BigInt.zero,
+          signature: row.cancelTxId ?? '',
         );
     }
   }
@@ -230,7 +220,6 @@ extension on OutgoingLinkPayment {
         txFailureReason: status.toTxFailureReason(),
         cancelTx: status.toCancelTx(),
         cancelTxId: status.toCancelTxId(),
-        slot: status.toSlot().toString(),
         generatedLinksAt: linksGeneratedAt,
         resolvedAt: status.toResolvedAt(),
       );
@@ -240,7 +229,6 @@ extension on OLPStatus {
   OLPStatusDto toDto() => this.map(
         txCreated: always(OLPStatusDto.txCreated),
         txSent: always(OLPStatusDto.txSent),
-        txConfirmed: always(OLPStatusDto.txConfirmed),
         linkReady: always(OLPStatusDto.linkReady),
         withdrawn: always(OLPStatusDto.withdrawn),
         txFailure: always(OLPStatusDto.txFailure),
@@ -256,8 +244,7 @@ extension on OLPStatus {
       );
 
   String? toTxId() => mapOrNull(
-        txCreated: (it) => it.tx.id,
-        txSent: (it) => it.tx.id,
+        txSent: (it) => it.signature,
       );
 
   String? toWithdrawTxId() => mapOrNull(withdrawn: (it) => it.txId);
@@ -268,15 +255,13 @@ extension on OLPStatus {
       );
 
   String? toCancelTxId() => mapOrNull(
-        cancelTxCreated: (it) => it.tx.id,
-        cancelTxSent: (it) => it.tx.id,
+        cancelTxSent: (it) => it.signature,
         canceled: (it) => it.txId,
       );
 
   Future<String?> toPrivateKey() => this.map(
         txCreated: (it) async => base58encode(it.escrow.bytes),
         txSent: (it) async => base58encode(it.escrow.bytes),
-        txConfirmed: (it) async => base58encode(it.escrow.bytes),
         linkReady: (it) async => base58encode(it.escrow.bytes),
         withdrawn: (it) async => null,
         canceled: (it) async => null,
@@ -298,12 +283,5 @@ extension on OLPStatus {
   DateTime? toResolvedAt() => mapOrNull(
         withdrawn: (it) => it.timestamp,
         canceled: (it) => it.timestamp,
-      );
-
-  BigInt? toSlot() => mapOrNull(
-        txCreated: (it) => it.slot,
-        txSent: (it) => it.slot,
-        cancelTxCreated: (it) => it.slot,
-        cancelTxSent: (it) => it.slot,
       );
 }

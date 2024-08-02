@@ -26,8 +26,6 @@
   "@balances_lblConnectionError": {},
   "comingSoon": "Em breve!",
   "@comingSoon": {},
-  "completeThePuzzle": "Você escreveu sua frase de recuperação corretamente? Teste aqui:",
-  "@completeThePuzzle": {},
   "contactUs": "Contate-nos",
   "@contactUs": {},
   "copiedFid": "FID copiado: {fid}",
@@ -106,8 +104,6 @@
   },
   "following": "Seguindo",
   "@following": {},
-  "fundYourAccount": "Deposite em sua conta para iniciar sua jornada. Você pode enviar dinheiro para qualquer lugar do mundo ou comprar e vender cripto !",
-  "@fundYourAccount": {},
   "help": "Ajuda",
   "@help": {},
   "incomingSplitKeyPayments_lblByClickingTheSecondLink": "Ao clicar no segundo link da mensagem ou no botão de cancelar, você concorda com nossos ",
@@ -242,6 +238,18 @@
   "@noEmailInCryptoInfo": {},
   "noEmailInCryptoParagraph": "Você precisa de uma frase de recuperação secreta. Essa frase é composta por palavras de segurança geradas aleatoriamente que serão fornecidas a você. Sem essas palavras, você não poderá acessar seu dinheiro. Essas palavras nunca podem ser recuperadas.\n\nMantenha-as em um lugar seguro! ",
   "@noEmailInCryptoParagraph": {},
+  "offRampDepositError": "Houve um problema com sua retirada.",
+  "@offRampDepositError": {},
+  "offRampWaitingForPartner": "Seu dinheiro está a caminho",
+  "@offRampWaitingForPartner": {},
+  "offRampWithdrawalFailure": "Houve um problema com sua retirada. Por favor, entre em contato conosco.",
+  "@offRampWithdrawalFailure": {},
+  "offRampWithdrawCancelledTitle": "A retirada foi cancelada",
+  "@offRampWithdrawCancelledTitle": {},
+  "offRampWithdrawReceived": "O dinheiro foi recebido",
+  "@offRampWithdrawReceived": {},
+  "offRampWithdrawSent": "USDC enviado ao parceiro",
+  "@offRampWithdrawSent": {},
   "ok": "OK",
   "@ok": {},
   "onboardingBullet": "Investimento em Cripto simplificado, seja você novato ou profissional experiente!",
@@ -250,8 +258,6 @@
   "@onboardingIntro": {},
   "onboardingNoticeFinishSetup": "Concluir configuração",
   "@onboardingNoticeFinishSetup": {},
-  "onboardingNoticeMessage": "Conclua a configuração protegendo sua conta.",
-  "@onboardingNoticeMessage": {},
   "oneMonth": "1 mês",
   "@oneMonth": {},
   "oneWeek": "1 semana",
@@ -294,22 +300,7 @@
   "@paymentRequest_lblCancelConfirmationSubtitle": {},
   "paymentRequest_lblCancelConfirmationTitle": "Cancelar a solicitação de pagamento",
   "@paymentRequest_lblCancelConfirmationTitle": {},
-  "paymentRequestSuccessNotificationTitle": "Sua solicitação de {amount} foi paga.",
-  "@paymentRequestSuccessNotificationTitle": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "paymentRequestTitle": "Solicitação de pagamento para {amount}",
-  "@paymentRequestTitle": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
+  "paymentRequestTitle": "Solicitação de pagamento",
   "pending": "Pendentes",
   "@pending": {},
   "photoLibrary": "Galeria",
@@ -380,10 +371,6 @@
   },
   "recoverySubHeading": "Por favor, digite sua frase de recuperação secreta a seguir e salve-a com cuidado. Essa frase é composta de 12 palavras geradas aleatoriamente. Você não poderá recuperar seu dinheiro se perder essas palavras.",
   "@recoverySubHeading": {},
-  "recoveryWarningInfo": "Leia cuidadosamente as informações abaixo antes de visualizar sua frase de recuperação secreta",
-  "@recoveryWarningInfo": {},
-  "recoveryWarningParagraph": "Para recuperar sua carteira, você precisará da sua frase de recuperação secreta. Anote sua seguinte frase de recuperação secreta e salve-a com cuidado.\n\nQualquer pessoa que tenha acesso à sua frase de recuperação secreta também tem um acesso irrevogável ao seu dinheiro.\n\nPor favor, nunca compartilhe esta frase de recuperação secreta com um estranho e nunca insira esta frase de recuperação secreta em um formulário ou outro aplicativo.",
-  "@recoveryWarningParagraph": {},
   "reEnterPasscode": "Insira sua senha novamente",
   "@reEnterPasscode": {},
   "remindMeLater": "Lembre-me mais tarde",
@@ -396,7 +383,7 @@
   "@requestNotePlaceholder": {},
   "requestNoteRequesting": "Solicitando",
   "@requestNoteRequesting": {},
-  "requestOrSendPayment": "Solicitar ou enviar pagamento",
+  "requestOrSendPayment": "Enviar ou Solicitar",
   "@requestOrSendPayment": {},
   "resendLink": "Reenviar links",
   "@resendLink": {},
@@ -404,14 +391,8 @@
   "@retry": {},
   "save": "Salvar",
   "@save": {},
-  "scanToReceive": "Digitalize para receber {amount} ",
-  "@scanToReceive": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
+  "scanToReceive": "Digitalize para receber",
+  "@scanToReceive": {},
   "search": "Buscar",
   "@search": {},
   "searchPlaceholder": "Buscar...",
@@ -448,10 +429,6 @@
   "@shareInstructions": {},
   "shareIntroFt": "Olá!\n\nAcabei de te enviar ",
   "@shareIntroFt": {},
-  "shareLink": "Compartilhar links de pagamento",
-  "@shareLink": {},
-  "shareLinks": "Compartilhar links",
-  "@shareLinks": {},
   "sharePaymentRequestLinkInstructions": "Para me pagar com um clique, visite:",
   "@sharePaymentRequestLinkInstructions": {},
   "sharePaymentRequestLinkIntro": "Olá!\n\nEnviei uma solicitação de ",
@@ -467,10 +444,6 @@
       }
     }
   },
-  "sharePaymentRequestLinkTitle": "Compartilhar link",
-  "@sharePaymentRequestLinkTitle": {},
-  "sharePaymentRequestQrCodeTitle": "Compartilhar QR Code",
-  "@sharePaymentRequestQrCodeTitle": {},
   "sharePaymentRequestTitle": "Solicitação criada!",
   "@sharePaymentRequestTitle": {},
   "shareStep1": "Etapa 1 - Clique no primeiro link:",
@@ -483,8 +456,6 @@
   "@signIn2": {},
   "signIn_lblByCreatingWalletYouAgree": "Ao criar uma carteira ou usar uma carteira existente, você concorda com os nossos ",
   "@signIn_lblByCreatingWalletYouAgree": {},
-  "signInWithSaga": "Entrar com Saga",
-  "@signInWithSaga": {},
   "signOut": "Apagar Carteira",
   "@signOut": {},
   "signOutConfirmation": "Tem certeza que você deseja\napagar a carteira?",
@@ -689,14 +660,10 @@
   "@weWereUnableToFetchTokenPrice": {},
   "yes": "Sim",
   "@yes": {},
-  "yesDeleteMyWallet": "Sim, exclua minha carteira",
-  "@yesDeleteMyWallet": {},
   "youOwn": "Você possui",
   "@youOwn": {},
   "yourFirstNamePlaceholder": "Escolha um nome de usuário",
   "@yourFirstNamePlaceholder": {},
-  "yourLinkIsReady": "Seu link está pronto",
-  "@yourLinkIsReady": {},
   "yourRecoveryPhrase": "Sua Frase de Recuperação Secreta",
   "@yourRecoveryPhrase": {},
   "yourRecoveryPhraseSub": "Por favor, digite sua frase de recuperação secreta a seguir e salve-a com cuidado. Essa frase é composta de 12 palavras geradas aleatoriamente. Você não poderá recuperar seu dinheiro se perder essas palavras.",

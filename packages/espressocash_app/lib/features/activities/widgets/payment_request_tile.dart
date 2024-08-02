@@ -1,25 +1,24 @@
-import 'package:auto_route/auto_route.dart';
-import 'package:dfunc/dfunc.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../core/presentation/format_date.dart';
 import '../../../../gen/assets.gen.dart';
 import '../../../../l10n/device_locale.dart';
 import '../../../../l10n/l10n.dart';
+import '../../../utils/extensions.dart';
 import '../../payment_request/data/watch_payment_request.dart';
 import '../../payment_request/models/payment_request.dart';
-import '../../payment_request/screens/link_details_flow_screen.dart';
+import '../../payment_request/screens/payment_request_screen.dart';
 import '../../payment_request/widgets/formatted_amount.dart';
-import '../../payment_request/widgets/payment_request_verifier.dart';
 import 'activity_tile.dart';
 
 class PaymentRequestTile extends StatefulWidget {
   const PaymentRequestTile({
     super.key,
     required this.id,
+    this.showIcon = true,
   });
 
   final String id;
+  final bool showIcon;
 
   @override
   State<PaymentRequestTile> createState() => _PaymentRequestTileState();
@@ -42,25 +41,22 @@ class _PaymentRequestTileState extends State<PaymentRequestTile> {
 
           return data == null
               ? SizedBox.shrink(key: ValueKey(widget.id))
-              : PaymentRequestVerifier(
+              : CpActivityTile(
                   key: ValueKey(widget.id),
-                  paymentRequest: data,
-                  child: CpActivityTile(
-                    title: context.l10n.paymentRequestTitle(
+                  title: context.l10n.paymentRequestTitle,
+                  icon: Assets.icons.paymentIcon.svg(),
+                  timestamp: context.formatDate(data.created),
+                  incomingAmount:
                       data.formattedAmount(DeviceLocale.localeOf(context)),
-                    ),
-                    icon: Assets.icons.paymentIcon.svg(),
-                    timestamp: context.formatDate(data.created),
-                    incomingAmount:
-                        data.formattedAmount(DeviceLocale.localeOf(context)),
-                    status: data.state.map(
-                      initial: always(CpActivityTileStatus.inProgress),
-                      completed: always(CpActivityTileStatus.success),
-                      failure: always(CpActivityTileStatus.failure),
-                    ),
-                    onTap: () => context
-                        .navigateTo(LinkDetailsFlowScreen.route(id: data.id)),
-                  ),
+                  status: switch (data.state) {
+                    PaymentRequestState.initial =>
+                      CpActivityTileStatus.inProgress,
+                    PaymentRequestState.completed =>
+                      CpActivityTileStatus.success,
+                    PaymentRequestState.error => CpActivityTileStatus.failure,
+                  },
+                  onTap: () => PaymentRequestScreen.push(context, id: data.id),
+                  showIcon: widget.showIcon,
                 );
         },
       );

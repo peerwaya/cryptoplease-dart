@@ -1,4 +1,3 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../l10n/l10n.dart';
@@ -26,7 +25,7 @@ class InvalidEscrowErrorWidget extends StatelessWidget {
                 size: CpButtonSize.big,
                 width: double.infinity,
                 text: context.l10n.ok,
-                onPressed: () => context.router.pop(),
+                onPressed: () => Navigator.pop(context),
               ),
             ],
           ),

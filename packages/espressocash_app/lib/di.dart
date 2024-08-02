@@ -1,16 +1,14 @@
 import 'package:dio/dio.dart';
-import 'package:espressocash_api/espressocash_api.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
+import 'package:mixpanel_flutter/mixpanel_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solana/solana.dart';
-import 'package:solana_seed_vault/solana_seed_vault.dart';
 
 import 'config.dart';
-import 'core/coingecko_client.dart';
-import 'core/tokens/token_list.dart';
 import 'di.config.dart';
+import 'features/tokens/token_list.dart';
 
 final sl = GetIt.instance;
 
@@ -42,23 +40,18 @@ abstract class AppModule {
   @lazySingleton
   RpcClient get rpcClient => solanaClient.rpcClient;
 
-  @lazySingleton
-  CryptopleaseClient get cryptopleaseClient => CryptopleaseClient();
-
-  @lazySingleton
-  JupiterAggregatorClient get jupiterClient => JupiterAggregatorClient();
-
   @preResolve
-  Future<SharedPreferences> get prefs => SharedPreferences.getInstance();
+  Future<SharedPreferences> prefs() => SharedPreferences.getInstance();
 
-  @lazySingleton
-  SeedVault get seedVault => SeedVault.instance;
-
+  @singleton
   @preResolve
-  Future<CoingeckoClient> get coingeckoClient => CoingeckoClient.init();
+  Future<Mixpanel> mixpanel() async {
+    final mixpanel = await Mixpanel.init(
+      const String.fromEnvironment('MIXPANEL_TOKEN'),
+      trackAutomaticEvents: true,
+    );
+    mixpanel.setServerURL('https://api-eu.mixpanel.com');
 
-  @preResolve
-  @Named('isSaga')
-  Future<bool> isSaga(SeedVault vault) =>
-      vault.isAvailable(allowSimulated: !isProd);
+    return mixpanel;
+  }
 }

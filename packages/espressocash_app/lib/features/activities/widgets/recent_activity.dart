@@ -1,21 +1,25 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter/material.dart' hide Notification;
-import 'package:provider/provider.dart';
 
 import '../../../di.dart';
 import '../../../l10n/l10n.dart';
 import '../../../ui/button.dart';
+import '../../../ui/colors.dart';
+import '../../../ui/home_tile.dart';
 import '../../../ui/theme.dart';
-import '../../investments/widgets/home_widget.dart';
-import '../../wallet_flow/screens/wallet_flow_screen.dart';
 import '../data/transaction_repository.dart';
-import '../screens/activities_screen.dart';
-import '../services/bloc.dart';
+import '../services/tx_updater.dart';
 import 'transaction_item.dart';
 
 class RecentActivityWidget extends StatefulWidget {
-  const RecentActivityWidget({super.key});
+  const RecentActivityWidget({
+    super.key,
+    required this.onSendMoneyPressed,
+    required this.onTransactionsPressed,
+  });
+
+  final VoidCallback onSendMoneyPressed;
+  final VoidCallback onTransactionsPressed;
 
   @override
   State<RecentActivityWidget> createState() => _RecentActivityWidgetState();
@@ -30,8 +34,7 @@ class _RecentActivityWidgetState extends State<RecentActivityWidget> {
   void initState() {
     super.initState();
     _txs = sl<TransactionRepository>().watchCount(_activityCount);
-
-    context.read<TxUpdaterBloc>().add(const TxUpdaterEvent.fetch());
+    sl<TxUpdater>().call();
   }
 
   @override
@@ -42,14 +45,8 @@ class _RecentActivityWidgetState extends State<RecentActivityWidget> {
 
           if (data == null) return const SizedBox.shrink();
 
-          final isLoading = context.select<TxUpdaterBloc, bool>(
-            (value) => value.state.isProcessing,
-          );
-
-          if (isLoading && data.isEmpty) return const SizedBox.shrink();
-
           return HomeTile(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -61,9 +58,13 @@ class _RecentActivityWidgetState extends State<RecentActivityWidget> {
                     style: dashboardSectionTitleTextStyle,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 if (data.isEmpty)
-                  const Center(child: _NoActivity())
+                  Center(
+                    child: _NoActivity(
+                      onSendMoneyPressed: widget.onSendMoneyPressed,
+                    ),
+                  )
                 else ...[
                   _Card(
                     child: Column(
@@ -71,13 +72,15 @@ class _RecentActivityWidgetState extends State<RecentActivityWidget> {
                           .map(
                             (e) => _KeepAlive(
                               key: ValueKey(e),
-                              child: TransactionItem(tx: e),
+                              child: CpTheme.black(
+                                child: TransactionItem(tx: e, showIcon: false),
+                              ),
                             ),
                           )
                           .toList(),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   // TODO(KB): Check if needed
                   // ignore: avoid-single-child-column-or-row
                   Row(
@@ -86,10 +89,8 @@ class _RecentActivityWidgetState extends State<RecentActivityWidget> {
                       CpButton(
                         text: context.l10n.recentActivitySeeAll,
                         size: CpButtonSize.micro,
-                        variant: CpButtonVariant.black,
-                        onPressed: () => context.router.navigate(
-                          ActivitiesScreen.route(goToTransactions: true),
-                        ),
+                        variant: CpButtonVariant.dark,
+                        onPressed: widget.onTransactionsPressed,
                       ),
                     ],
                   ),
@@ -102,7 +103,9 @@ class _RecentActivityWidgetState extends State<RecentActivityWidget> {
 }
 
 class _NoActivity extends StatelessWidget {
-  const _NoActivity();
+  const _NoActivity({required this.onSendMoneyPressed});
+
+  final VoidCallback onSendMoneyPressed;
 
   @override
   Widget build(BuildContext context) => _Card(
@@ -113,7 +116,7 @@ class _NoActivity extends StatelessWidget {
               Text(
                 context.l10n.recentActivityEmpty,
                 style: const TextStyle(
-                  color: Color(0xFF2D2B2C),
+                  color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                 ),
@@ -123,8 +126,7 @@ class _NoActivity extends StatelessWidget {
                 minWidth: 120,
                 size: CpButtonSize.wide,
                 text: context.l10n.yes,
-                onPressed: () =>
-                    context.router.navigate(WalletFlowScreen.route()),
+                onPressed: onSendMoneyPressed,
               ),
             ],
           ),
@@ -138,9 +140,9 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
         decoration: const ShapeDecoration(
-          color: Colors.white,
+          color: CpColors.darkBackgroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.all(
               Radius.circular(28),

@@ -1,14 +1,11 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../routes.gr.dart';
 import '../../../../ui/app_bar.dart';
 import '../../../../ui/colors.dart';
 import '../../../../ui/theme.dart';
 import '../../../l10n/l10n.dart';
-import '../data/blockchain.dart';
+import '../../blockchain/models/blockchain.dart';
 
-@RoutePage()
 class NetworkPickerScreen extends StatelessWidget {
   const NetworkPickerScreen({
     super.key,
@@ -16,7 +13,19 @@ class NetworkPickerScreen extends StatelessWidget {
     required this.onSubmitted,
   });
 
-  static const route = NetworkPickerRoute.new;
+  static void push(
+    BuildContext context, {
+    Blockchain? initial,
+    required ValueSetter<Blockchain> onSubmitted,
+  }) =>
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (context) => NetworkPickerScreen(
+            initial: initial,
+            onSubmitted: onSubmitted,
+          ),
+        ),
+      );
 
   final Blockchain? initial;
   final ValueSetter<Blockchain> onSubmitted;
@@ -52,7 +61,7 @@ class _Content extends StatefulWidget {
 class _ContentState extends State<_Content> {
   Blockchain? _selectedNetwork;
 
-  final _networks = Blockchain.values;
+  static const List<Blockchain> _networks = Blockchain.values;
 
   @override
   void initState() {
@@ -89,7 +98,7 @@ class _ContentState extends State<_Content> {
                   child: ListTile(
                     dense: true,
                     title: Text(
-                      network.name,
+                      network.displayName,
                       style: TextStyle(fontSize: selected ? 19 : 17),
                     ),
                     selectedColor: Colors.white,

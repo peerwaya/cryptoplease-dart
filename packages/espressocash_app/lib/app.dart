@@ -1,86 +1,82 @@
-import 'dart:async';
-
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 
-import 'core/analytics/analytics_manager.dart';
 import 'di.dart';
-import 'features/accounts/services/accounts_bloc.dart';
-import 'features/app_lock/app_lock.dart';
+import 'features/accounts/services/account_service.dart';
+import 'features/app_lock/widgets/app_lock_module.dart';
 import 'features/authenticated/screens/authenticated_flow_screen.dart';
+import 'features/onboarding/data/onboarding_repository.dart';
+import 'features/onboarding/screens/onboarding_flow_screen.dart';
 import 'features/sign_in/screens/sign_in_flow_screen.dart';
 import 'l10n/gen/app_localizations.dart';
-import 'routes.dart';
 import 'ui/splash_screen.dart';
 import 'ui/theme.dart';
 
-class CryptopleaseApp extends StatefulWidget {
-  const CryptopleaseApp({super.key});
+class EspressoCashApp extends StatefulWidget {
+  const EspressoCashApp({super.key});
 
   @override
-  State<CryptopleaseApp> createState() => _CryptopleaseAppState();
+  State<EspressoCashApp> createState() => _EspressoCashAppState();
 }
 
-class _CryptopleaseAppState extends State<CryptopleaseApp> {
-  final _router = AppRouter();
-  StreamSubscription<void>? _nativeSplashSubscription;
+class _EspressoCashAppState extends State<EspressoCashApp> {
+  final _navigator = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
     super.initState();
-    _nativeSplashSubscription = context
-        .read<AccountsBloc>()
-        .stream
-        .map((event) => event.isProcessing)
-        .where((event) => !event)
-        .take(1)
-        .listen((event) => FlutterNativeSplash.remove());
+    sl<AccountService>().addListener(_handleAccountChanged);
+    _handleAccountChanged();
+  }
+
+  void _handleAccountChanged() {
+    Future.microtask(() {
+      if (sl<AccountService>().value == null) {
+        SignInFlowScreen.open(context, navigator: _navigator.currentState);
+      } else if (sl<OnboardingRepository>().hasFinishedOnboarding) {
+        AuthenticatedFlowScreen.open(
+          context,
+          navigator: _navigator.currentState,
+        );
+      } else {
+        OnboardingFlowScreen.open(
+          context,
+          navigator: _navigator.currentState,
+          onConfirmed: () {
+            AuthenticatedFlowScreen.open(
+              context,
+              navigator: _navigator.currentState,
+            );
+          },
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
-    _nativeSplashSubscription?.cancel();
-    _router.dispose();
+    sl<AccountService>().removeListener(_handleAccountChanged);
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isLoading =
-        context.select<AccountsBloc, bool>((b) => b.state.isProcessing);
-    final isAuthenticated =
-        context.select<AccountsBloc, bool>((b) => b.state.account != null);
-
-    return CpTheme(
-      theme: const CpThemeData.light(),
-      child: Builder(
-        builder: (context) => MaterialApp.router(
-          routeInformationParser: _router.defaultRouteParser(),
-          routerDelegate: AutoRouterDelegate.declarative(
-            _router,
-            routes: (_) => [
-              if (isAuthenticated)
-                AuthenticatedFlowScreen.route()
-              else if (isLoading)
-                SplashScreen.route()
-              else
-                SignInFlowScreen.route(),
-            ],
-            navigatorObservers: () => [
-              sl<AnalyticsManager>().analyticsObserver,
-            ],
+  Widget build(BuildContext context) => CpTheme(
+        theme: const CpThemeData.dark(),
+        child: Builder(
+          builder: (context) => MaterialApp(
+            home: const SplashScreen(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            debugShowCheckedModeBanner: false,
+            title: 'Espresso Cash',
+            theme: context.watch<CpThemeData>().toMaterialTheme(),
+            builder: (context, child) => AppLockModule(
+              // ignore: avoid-non-null-assertion, should not be null
+              child: child!,
+            ),
+            navigatorKey: _navigator,
           ),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          debugShowCheckedModeBanner: false,
-          title: 'Espresso Cash',
-          theme: context.watch<CpThemeData>().toMaterialTheme(),
-          builder: (context, child) => AppLockModule(child: child),
         ),
-      ),
-    );
-  }
+      );
 }

@@ -1,25 +1,16 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/l10n.dart';
-import '../../../routes.gr.dart';
 import '../../../ui/app_bar.dart';
 import '../../../ui/onboarding_screen.dart';
 import '../../../ui/theme.dart';
-import '../services/sign_in_bloc.dart';
+import '../services/validate_mnemonic.dart';
 import '../widgets/mnemonic_input_formatter.dart';
 
-@RoutePage()
 class RestoreAccountScreen extends StatefulWidget {
-  const RestoreAccountScreen({
-    super.key,
-    required this.onMnemonicConfirmed,
-  });
+  const RestoreAccountScreen({super.key, required this.onSubmit});
 
-  static const route = RestoreAccountRoute.new;
-
-  final VoidCallback onMnemonicConfirmed;
+  final ValueSetter<String> onSubmit;
 
   @override
   State<RestoreAccountScreen> createState() => _RestoreAccountScreenState();
@@ -29,12 +20,7 @@ class _RestoreAccountScreenState extends State<RestoreAccountScreen> {
   late final TextEditingController _controller;
   bool _mnemonicIsValid = false;
 
-  void _restoreAccount() {
-    context
-        .read<SignInBloc>()
-        .add(SignInEvent.existingLocalWalletRequested(_controller.text.trim()));
-    widget.onMnemonicConfirmed();
-  }
+  void _restoreAccount() => widget.onSubmit(_controller.text.trim());
 
   @override
   void initState() {
@@ -64,7 +50,7 @@ class _RestoreAccountScreenState extends State<RestoreAccountScreen> {
               onPressed: _mnemonicIsValid ? _restoreAccount : null,
             ),
             children: [
-              CpAppBar(),
+              const CpAppBar(),
               const OnboardingLogo(),
               OnboardingTitle(text: context.l10n.enterYourSecretWords),
               OnboardingDescription(text: context.l10n.toRestoreYourAccount),

@@ -1,10 +1,6 @@
 import 'package:dfunc/dfunc.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../core/presentation/format_amount.dart';
-import '../../../core/tokens/token.dart';
 import '../../../l10n/decimal_separator.dart';
 import '../../../l10n/device_locale.dart';
 import '../../../l10n/l10n.dart';
@@ -12,9 +8,13 @@ import '../../../ui/chip.dart';
 import '../../../ui/colors.dart';
 import '../../../ui/number_formatter.dart';
 import '../../../ui/shake.dart';
+import '../../../ui/size.dart';
 import '../../../ui/usdc_info.dart';
-import '../../wallet_flow/widgets/extensions.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../tokens/token.dart';
 import '../services/amount_ext.dart';
+import 'extensions.dart';
 
 class AmountWithEquivalent extends StatelessWidget {
   const AmountWithEquivalent({

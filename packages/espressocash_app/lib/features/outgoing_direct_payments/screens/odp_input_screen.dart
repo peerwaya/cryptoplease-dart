@@ -1,27 +1,32 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
 import '../../../gen/assets.gen.dart';
 import '../../../l10n/l10n.dart';
-import '../../../routes.gr.dart';
 import '../../../ui/button.dart';
 import '../../../ui/icon_button.dart';
+import '../../../ui/pay_details_page.dart';
 import '../../../ui/text_field.dart';
 import '../../../ui/theme.dart';
+import '../../blockchain/models/blockchain.dart';
 import '../../qr_scanner/widgets/build_context_ext.dart';
-import '../../wallet_flow/widgets/pay_page.dart';
-import '../data/blockchain.dart';
 import 'network_picker_screen.dart';
 
 typedef ODPInputResponse = void Function(Blockchain network, String address);
 
-@RoutePage()
 class ODPInputScreen extends StatefulWidget {
   const ODPInputScreen({super.key, required this.onSubmit});
 
-  final ODPInputResponse onSubmit;
+  static void push(
+    BuildContext context, {
+    required ODPInputResponse onSubmit,
+  }) =>
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (context) => ODPInputScreen(onSubmit: onSubmit),
+        ),
+      );
 
-  static const route = ODPInputRoute.new;
+  final ODPInputResponse onSubmit;
 
   @override
   State<ODPInputScreen> createState() => _ODPInputScreenState();
@@ -34,23 +39,21 @@ class _ODPInputScreenState extends State<ODPInputScreen> {
   Blockchain _selectedNetwork = Blockchain.solana;
   final bool _showNetworkPicker = Blockchain.values.length > 1;
 
-  bool get _isValid => _selectedNetwork.validate(_walletAddressController.text);
+  bool get _isValid =>
+      _selectedNetwork.validateAddress(_walletAddressController.text);
 
   void _handleSubmitted() => widget.onSubmit(
         _selectedNetwork,
         _walletAddressController.text,
       );
 
-  void _handleOnNetworkTap() => context.router.push(
-        NetworkPickerScreen.route(
-          initial: _selectedNetwork,
-          onSubmitted: (network) {
-            context.router.pop();
-            setState(() {
-              _selectedNetwork = network;
-            });
-          },
-        ),
+  void _handleOnNetworkTap() => NetworkPickerScreen.push(
+        context,
+        initial: _selectedNetwork,
+        onSubmitted: (Blockchain network) {
+          Navigator.pop(context);
+          setState(() => _selectedNetwork = network);
+        },
       );
 
   Future<void> _handleOnQrScan() async {
@@ -71,63 +74,57 @@ class _ODPInputScreenState extends State<ODPInputScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => PayPage(
+  Widget build(BuildContext context) => PayDetailsPage(
         title: context.l10n.walletSendToAddressTitle,
         headerBackground: Assets.images.sendManualBg,
-        headerContent: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 300,
-              child: Text(
-                '${context.l10n.walletNetworks}:',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            DecoratedBox(
-              decoration: const ShapeDecoration(
-                color: Colors.black,
-                shape: StadiumBorder(),
-              ),
-              child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                onTap: _showNetworkPicker ? _handleOnNetworkTap : null,
-                title: Text(
-                  _selectedNetwork.name,
-                  maxLines: 1,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                trailing: _showNetworkPicker
-                    ? const Icon(
-                        Icons.keyboard_arrow_down_outlined,
-                        color: Colors.white,
-                        size: 34,
-                      )
-                    : null,
-              ),
-            ),
-            const SizedBox(height: 36),
-          ],
-        ),
         content: SafeArea(
           top: false,
-          minimum: const EdgeInsets.symmetric(horizontal: 40),
+          minimum: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 27),
+              SizedBox(
+                width: 300,
+                child: Text(
+                  '${context.l10n.walletNetworks}:',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DecoratedBox(
+                decoration: const ShapeDecoration(
+                  color: Colors.black,
+                  shape: StadiumBorder(),
+                ),
+                child: ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                  onTap: _showNetworkPicker ? _handleOnNetworkTap : null,
+                  title: Text(
+                    _selectedNetwork.displayName,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  trailing: _showNetworkPicker
+                      ? const Icon(
+                          Icons.keyboard_arrow_down_outlined,
+                          color: Colors.white,
+                          size: 34,
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 36),
               const _OthersTitle(),
               const SizedBox(height: 5),
               _WalletTextField(

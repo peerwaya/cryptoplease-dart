@@ -1,16 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../accounts/auth_scope.dart';
 import '../models/notification.dart';
 
 typedef NotificationHanlder = FutureOr<Object?> Function(
   MobileWalletNotification notification,
 );
 
-@lazySingleton
-class MobileWalletRepository extends ChangeNotifier {
+@Singleton(scope: authScope)
+class MobileWalletRepository extends ChangeNotifier implements Disposable {
   MobileWalletNotification? _notification;
   Completer<Object?>? _completer;
 
@@ -27,7 +29,7 @@ class MobileWalletRepository extends ChangeNotifier {
     );
   }
 
-  FutureOr<T?> notifyApp<T>(MobileWalletNotification notification) {
+  Future<T?> notifyApp<T>(MobileWalletNotification notification) async {
     _notification = notification;
     notifyListeners();
 
@@ -57,4 +59,7 @@ class MobileWalletRepository extends ChangeNotifier {
     }
     _completer = null;
   }
+
+  @override
+  void onDispose() => dispose();
 }

@@ -1,9 +1,9 @@
 import 'package:decimal/decimal.dart';
 
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../core/tokens/token.dart';
 import '../../../di.dart';
+import '../../currency/models/amount.dart';
+import '../../currency/models/currency.dart';
+import '../../tokens/token.dart';
 import '../data/repository.dart';
 
 extension CryptoAmountExt on CryptoAmount {

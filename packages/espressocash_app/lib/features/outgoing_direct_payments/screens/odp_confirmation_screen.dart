@@ -1,14 +1,10 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:decimal/decimal.dart';
 import 'package:dfunc/dfunc.dart';
 import 'package:flutter/material.dart';
 import 'package:solana/solana.dart';
 
-import '../../../core/fee_label.dart';
-import '../../../core/tokens/token.dart';
 import '../../../l10n/device_locale.dart';
 import '../../../l10n/l10n.dart';
-import '../../../routes.gr.dart';
 import '../../../ui/amount_keypad/amount_keypad.dart';
 import '../../../ui/app_bar.dart';
 import '../../../ui/bordered_row.dart';
@@ -18,8 +14,10 @@ import '../../../ui/dialogs.dart';
 import '../../../ui/number_formatter.dart';
 import '../../../ui/theme.dart';
 import '../../conversion_rates/widgets/amount_with_equivalent.dart';
+import '../../fees/models/fee_type.dart';
+import '../../fees/widgets/fee_label.dart';
+import '../../tokens/token.dart';
 
-@RoutePage<Decimal>()
 class ODPConfirmationScreen extends StatefulWidget {
   const ODPConfirmationScreen({
     super.key,
@@ -30,7 +28,25 @@ class ODPConfirmationScreen extends StatefulWidget {
     this.isEnabled = true,
   });
 
-  static const route = ODPConfirmationRoute.new;
+  static Future<Decimal?> push(
+    BuildContext context, {
+    required String initialAmount,
+    required Ed25519HDPublicKey recipient,
+    String? label,
+    required Token token,
+    required bool isEnabled,
+  }) =>
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ODPConfirmationScreen(
+            initialAmount: initialAmount,
+            recipient: recipient,
+            label: label,
+            token: token,
+            isEnabled: isEnabled,
+          ),
+        ),
+      );
 
   final String initialAmount;
   final Ed25519HDPublicKey recipient;
@@ -61,7 +77,7 @@ class _ScreenState extends State<ODPConfirmationScreen> {
         message: context.l10n.zeroAmountMessage(context.l10n.operationSend),
       );
     } else {
-      context.router.pop(amount);
+      Navigator.pop(context, amount);
     }
   }
 
@@ -78,7 +94,7 @@ class _ScreenState extends State<ODPConfirmationScreen> {
 
     return CpTheme.black(
       child: Scaffold(
-        appBar: CpAppBar(),
+        appBar: const CpAppBar(),
         body: SafeArea(
           child: Column(
             children: [

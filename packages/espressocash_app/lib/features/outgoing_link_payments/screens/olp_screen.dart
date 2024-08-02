@@ -1,15 +1,11 @@
 import 'dart:async';
 
-import 'package:auto_route/auto_route.dart';
 import 'package:dfunc/dfunc.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/presentation/format_amount.dart';
-import '../../../core/presentation/format_date.dart';
 import '../../../di.dart';
 import '../../../l10n/device_locale.dart';
 import '../../../l10n/l10n.dart';
-import '../../../routes.gr.dart';
 import '../../../ui/button.dart';
 import '../../../ui/content_padding.dart';
 import '../../../ui/dialogs.dart';
@@ -17,6 +13,8 @@ import '../../../ui/status_screen.dart';
 import '../../../ui/status_widget.dart';
 import '../../../ui/text_button.dart';
 import '../../../ui/timeline.dart';
+import '../../../utils/extensions.dart';
+import '../../conversion_rates/widgets/extensions.dart';
 import '../../transactions/models/tx_results.dart';
 import '../../transactions/widgets/transfer_progress.dart';
 import '../data/repository.dart';
@@ -24,11 +22,23 @@ import '../models/outgoing_link_payment.dart';
 import '../widgets/extensions.dart';
 import 'share_link_screen.dart';
 
-@RoutePage()
 class OLPScreen extends StatefulWidget {
   const OLPScreen({super.key, required this.id});
 
-  static const route = OLPRoute.new;
+  static void push(BuildContext context, {required String id}) =>
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (context) => OLPScreen(id: id),
+        ),
+      );
+
+  static void open(BuildContext context, {required String id}) =>
+      Navigator.of(context).pushAndRemoveUntil<void>(
+        MaterialPageRoute(
+          builder: (context) => OLPScreen(id: id),
+        ),
+        (route) => route.isFirst,
+      );
 
   final String id;
 
@@ -53,9 +63,7 @@ class _OLPScreenState extends State<OLPScreen> {
         .listen((payment) {
       final status = payment.status as OLPStatusLinkReady;
 
-      context.router.popAndPush(
-        ShareLinkScreen.route(amount: payment.amount, status: status),
-      );
+      ShareLinkScreen.push(context, amount: payment.amount, status: status);
       _shareLinkSubscription?.cancel();
     });
   }
@@ -74,13 +82,14 @@ class _OLPScreenState extends State<OLPScreen> {
           final locale = DeviceLocale.localeOf(context);
 
           if (payment == null) {
-            return TransferProgress(onBack: () => context.router.pop());
+            return TransferProgress(onBack: () => Navigator.pop(context));
           }
 
           void handleCanceled() => showConfirmationDialog(
                 context,
                 title: context
-                    .l10n.outgoingSplitKeyPayments_lblCancelConfirmationTitle,
+                    .l10n.outgoingSplitKeyPayments_lblCancelConfirmationTitle
+                    .toUpperCase(),
                 message: context.l10n
                     .outgoingSplitKeyPayments_lblCancelConfirmationSubtitle,
                 onConfirm: () {
@@ -95,7 +104,7 @@ class _OLPScreenState extends State<OLPScreen> {
             ),
             child: CpTextButton(
               text: context.l10n.outgoingSplitKeyPayments_btnCancel,
-              variant: CpTextButtonVariant.light,
+              variant: CpTextButtonVariant.dark,
               onPressed: handleCanceled,
             ),
           );
@@ -113,11 +122,10 @@ class _OLPScreenState extends State<OLPScreen> {
                 size: CpButtonSize.big,
                 width: double.infinity,
                 text: context.l10n.resendLink,
-                onPressed: () => context.router.push(
-                  ShareLinkScreen.route(
-                    amount: payment.amount,
-                    status: s,
-                  ),
+                onPressed: () => ShareLinkScreen.push(
+                  context,
+                  amount: payment.amount,
+                  status: s,
                 ),
               ),
               cancelButton,
@@ -145,7 +153,6 @@ class _OLPScreenState extends State<OLPScreen> {
           final CpStatusType statusType = payment.status.map(
             txCreated: always(CpStatusType.info),
             txSent: always(CpStatusType.info),
-            txConfirmed: always(CpStatusType.info),
             linkReady: always(CpStatusType.info),
             withdrawn: always(CpStatusType.success),
             canceled: always(CpStatusType.neutral),
@@ -201,7 +208,6 @@ class _OLPScreenState extends State<OLPScreen> {
             txSent: always(1),
             cancelTxCreated: always(1),
             cancelTxSent: always(1),
-            txConfirmed: always(1),
             linkReady: always(1),
             withdrawn: always(2),
           );
@@ -248,7 +254,7 @@ class _OLPScreenState extends State<OLPScreen> {
               payment.status.maybeMap(orElse: T, linkReady: F);
 
           return StatusScreen(
-            onBackButtonPressed: () => context.router.pop(),
+            onBackButtonPressed: () => Navigator.pop(context),
             title: context.l10n.splitKeyTransferTitle,
             statusType: statusType,
             statusTitle: statusTitle?.let(Text.new),

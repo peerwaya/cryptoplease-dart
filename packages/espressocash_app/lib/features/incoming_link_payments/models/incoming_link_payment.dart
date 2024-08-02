@@ -1,7 +1,8 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:solana/encoder.dart';
 
-import '../../../core/escrow_private_key.dart';
+import '../../currency/models/amount.dart';
+import '../../escrow/models/escrow_private_key.dart';
 import '../../transactions/models/tx_results.dart';
 
 part 'incoming_link_payment.freezed.dart';
@@ -17,21 +18,21 @@ class IncomingLinkPayment with _$IncomingLinkPayment {
 }
 
 @freezed
-class ILPStatus with _$ILPStatus {
+sealed class ILPStatus with _$ILPStatus {
   /// Tx is successfully created and ready to be sent.
-  const factory ILPStatus.txCreated(
-    SignedTx tx, {
-    required BigInt slot,
-  }) = ILPStatusTxCreated;
+  const factory ILPStatus.txCreated(SignedTx tx) = ILPStatusTxCreated;
 
-  /// Tx is successfully sent.
+  /// Tx is successfully sent to backend for sending to the blockchain.
   const factory ILPStatus.txSent(
     SignedTx tx, {
-    required BigInt slot,
+    required String signature,
   }) = ILPStatusTxSent;
 
   /// Final state. Tx is successfully confirmed and payment is claimed.
-  const factory ILPStatus.success({required String txId}) = ILPStatusSuccess;
+  const factory ILPStatus.success({
+    required SignedTx tx,
+    required CryptoAmount? fee,
+  }) = ILPStatusSuccess;
 
   /// Failed to create the tx, a new tx should be created.
   const factory ILPStatus.txFailure({

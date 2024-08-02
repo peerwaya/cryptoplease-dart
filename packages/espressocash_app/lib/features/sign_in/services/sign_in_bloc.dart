@@ -1,22 +1,20 @@
 import 'package:bip39/bip39.dart' as bip39;
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:dfunc/dfunc.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
-import 'package:solana_seed_vault/solana_seed_vault.dart';
 
-import '../../../core/flow.dart';
-import '../../../core/wallet.dart';
+import '../../../utils/flow.dart';
 import '../../accounts/models/account.dart';
 import '../../accounts/models/mnemonic.dart';
+import '../../accounts/models/wallet.dart';
 
 part 'sign_in_bloc.freezed.dart';
 
 @injectable
 class SignInBloc extends Bloc<SignInEvent, SignInState> {
-  SignInBloc(this._seedVault)
+  SignInBloc()
       // A value of type '_$FlowInitial<Exception, dynamic>' can't be assigned
       // to a parameter of type 'Flow<Exception, SignInResult>' in a const
       // constructor.
@@ -26,33 +24,13 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
     on<SignInEvent>(_eventHandler, transformer: sequential());
   }
 
-  final SeedVault _seedVault;
-
   EventHandler<SignInEvent, SignInState> get _eventHandler =>
       (event, emit) => event.map(
             submitted: (event) => _onSubmitted(event, emit),
             newLocalWalletRequested: (_) => _onNewLocalWalletRequested(emit),
-            existingSagaWalletRequested: (_) =>
-                _onExistingSagaWalletRequested(emit),
             existingLocalWalletRequested: (event) =>
                 _onExistingLocalWalletRequested(event, emit),
           );
-
-  Future<void> _onExistingSagaWalletRequested(Emitter<SignInState> emit) async {
-    try {
-      const purpose = Purpose.signSolanaTransaction;
-      final token = await _seedVault.hasUnauthorizedSeedsForPurpose(purpose)
-          ? await _seedVault.authorizeSeed(purpose)
-          : await _seedVault.importSeed(purpose);
-
-      emit(state.copyWith(source: AccountSource.saga(token)));
-      add(const SignInSubmitted());
-    } on PlatformException {
-      emit(state.toSeedVaultException());
-    } on Exception catch (error) {
-      emit(state.toGenericException(error));
-    }
-  }
 
   void _onNewLocalWalletRequested(Emitter<SignInState> emit) {
     emit(
@@ -85,7 +63,6 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
     try {
       final wallet = await state.source.when(
         local: (it) => createLocalWallet(mnemonic: it.phrase),
-        saga: (it) => createSagaWallet(_seedVault, it),
       );
 
       final accessMode = state.source.when(
@@ -94,24 +71,10 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
           generated: always(const AccessMode.created()),
           empty: () => throw StateError('Seed is empty during submission.'),
         ),
-        saga: always(const AccessMode.created()),
       );
 
-      final myAccount = MyAccount(
-        wallet: wallet,
-        accessMode: accessMode,
-      );
-      emit(
-        state.copyWith(
-          processingState: Flow.success(
-            SignInResult(
-              account: myAccount,
-              hasFinishedOnboarding:
-                  accessMode == const AccessMode.seedInputted(),
-            ),
-          ),
-        ),
-      );
+      final myAccount = MyAccount(wallet: wallet, accessMode: accessMode);
+      emit(state.copyWith(processingState: Flow.success(myAccount)));
     } on Exception catch (error) {
       emit(state.toGenericException(error));
     }
@@ -120,29 +83,16 @@ class SignInBloc extends Bloc<SignInEvent, SignInState> {
   }
 }
 
-bool validateMnemonic(String mnemonic) => bip39.validateMnemonic(mnemonic);
-
 @freezed
 class SignInState with _$SignInState {
   const factory SignInState({
     @Default(AccountSource.local(Mnemonic.empty())) AccountSource source,
-    required Flow<SignInException, SignInResult> processingState,
+    required Flow<SignInException, MyAccount> processingState,
   }) = _SignInState;
 }
 
 @freezed
-class SignInResult with _$SignInResult {
-  const factory SignInResult({
-    required MyAccount account,
-    required bool hasFinishedOnboarding,
-  }) = _SignInResult;
-}
-
-@freezed
 class SignInEvent with _$SignInEvent {
-  const factory SignInEvent.existingSagaWalletRequested() =
-      SignInExistingSagaWalletRequested;
-
   const factory SignInEvent.newLocalWalletRequested() =
       SignInNewLocalWalletRequested;
 
@@ -161,10 +111,5 @@ class SignInException with _$SignInException implements Exception {
 extension on SignInState {
   SignInState toGenericException(Exception e) => copyWith(
         processingState: Flow.failure(SignInException.generic(e)),
-      );
-
-  SignInState toSeedVaultException() => copyWith(
-        processingState:
-            const Flow.failure(SignInException.seedVaultActionCanceled()),
       );
 }

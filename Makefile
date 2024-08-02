@@ -39,10 +39,10 @@ flutter_get:
 	flutter pub get
 
 flutter_build:
-	flutter pub run build_runner build --delete-conflicting-outputs
+	dart run build_runner build --delete-conflicting-outputs
 
 flutter_generate_test_schemas:
-	flutter pub run drift_dev schema generate moor_schemas test/generated/
+	dart run drift_dev schema generate moor_schemas test/generated/
 
 flutter_analyze:
 	flutter analyze --fatal-infos
@@ -87,3 +87,10 @@ ifndef SENTRY_DSN
 	$(error "SENTRY_DSN must be set")
 endif
 	flutter build appbundle --build-number=$(BUILD_NUMBER) $(PROD_DEFINITIONS)
+
+dump_schema:
+ifndef VERSION
+	$(error "VERSION must be set")
+endif
+	dart run drift_dev schema dump lib/data/db/db.dart moor_schemas/moor_schema_v$(VERSION).json
+

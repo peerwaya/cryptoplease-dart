@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:storybook_flutter/storybook_flutter.dart';
 
-import '../../../core/amount.dart';
-import '../../../core/currency.dart';
-import '../../../features/wallet_flow/screens/wallet_main_screen.dart';
-import '../../utils/app_wrapper.dart';
+import '../../../features/currency/models/amount.dart';
+import '../../../features/currency/models/currency.dart';
+import '../../../features/wallet_flow/widgets/wallet_tab_view.dart';
+import '../../app_wrapper.dart';
 
 final walletMainScreen = Story(
   name: 'Screens/WalletMainScreen',

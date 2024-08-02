@@ -21,20 +21,18 @@ analyzer:
 dart_code_metrics:
   rules:
     avoid-passing-self-as-argument: false
+    prefer-overriding-parent-equality: false # too many false positives, temporarily disabled
+    avoid-unnecessary-collections: false # too many false positives, temporarily disabled
     avoid-banned-imports:
       severity: error
       entries:
-        - paths: [".*/lib/.+\\.dart"]
-          deny: ["[^./]+/src/.*"]
-          message: "Do not import from src directory outside of the module"
-
         - paths: [".*/models/.+\\.dart"]
           deny: [".*/(data|services|widgets|screens|ui|l10n)/.*"]
           message: "Do not import data|services|widgets|screens|ui|l10n from models"
 
         - paths: [".*/data/.+\\.dart"]
-          deny: [".*/(services|widgets|screens|ui|l10n)/.*"]
-          message: "Do not import services|widgets|screens|ui|l10n from data"
+          deny: [".*/(services|widgets|screens|ui)/.*"]
+          message: "Do not import services|widgets|screens|ui from data"
 
         - paths: [".*/services/.+\\.dart"]
           deny: [".*/(widgets|screens|ui|l10n)/.*"]
@@ -43,6 +41,10 @@ dart_code_metrics:
         - paths: [".*/ui/.+\\.dart"]
           deny: [".*/features/.*"]
           message: "Do not import features from ui"
+
+        - paths: [".*/utils/.+\\.dart"]
+          deny: [".*/(features|ui)/.*"]
+          message: "Do not import features|ui from utils"
     avoid-nullable-interpolation:
       exclude:
         - test/**

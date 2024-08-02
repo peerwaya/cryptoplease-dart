@@ -1,4 +1,3 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:dfunc/dfunc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,7 +5,6 @@ import 'package:solana_mobile_wallet/solana_mobile_wallet.dart';
 
 import '../../../di.dart';
 import '../../../l10n/l10n.dart';
-import '../../../routes.gr.dart';
 import '../../../ui/app_bar.dart';
 import '../../../ui/button.dart';
 import '../../../ui/theme.dart';
@@ -14,14 +12,21 @@ import '../../accounts/models/account.dart';
 import '../models/remote_request.dart';
 import '../services/bloc.dart';
 
-@RoutePage()
 class RemoteRequestScreen extends StatelessWidget {
   const RemoteRequestScreen({
     super.key,
     required this.request,
   });
 
-  static const route = RemoteRequestRoute.new;
+  static void push(
+    BuildContext context, {
+    required RemoteRequest request,
+  }) =>
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (context) => RemoteRequestScreen(request: request),
+        ),
+      );
 
   final RemoteRequest request;
 
@@ -29,7 +34,7 @@ class RemoteRequestScreen extends StatelessWidget {
   Widget build(BuildContext context) => BlocProvider(
         create: (context) => sl<RemoteRequestBloc>(
           param1: request,
-          param2: context.read<MyAccount>(),
+          param2: sl<MyAccount>(),
         ),
         child: const _Content(),
       );
@@ -59,7 +64,7 @@ class _ContentState extends State<_Content> {
           ),
           body: BlocConsumer<RemoteRequestBloc, RemoteRequestState>(
             listener: (context, state) => state.whenOrNull(
-              result: (r) => context.router.pop(r),
+              result: (r) => Navigator.pop(context, r),
             ),
             builder: (context, state) => state.when(
               loading: always(

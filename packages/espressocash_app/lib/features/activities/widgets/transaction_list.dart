@@ -1,11 +1,10 @@
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter/material.dart' hide Notification;
-import 'package:provider/provider.dart';
 
 import '../../../di.dart';
-import '../../../ui/loader.dart';
+import '../../../ui/colors.dart';
 import '../data/transaction_repository.dart';
-import '../services/bloc.dart';
+import '../services/tx_updater.dart';
 import 'no_activity.dart';
 import 'transaction_item.dart';
 
@@ -13,9 +12,11 @@ class TransactionList extends StatefulWidget {
   const TransactionList({
     super.key,
     this.padding,
+    required this.onSendMoneyPressed,
   });
 
   final EdgeInsetsGeometry? padding;
+  final VoidCallback onSendMoneyPressed;
 
   @override
   State<TransactionList> createState() => _TransactionListState();
@@ -28,13 +29,14 @@ class _TransactionListState extends State<TransactionList> {
   void initState() {
     super.initState();
     _txs = sl<TransactionRepository>().watchAll();
-
-    context.read<TxUpdaterBloc>().add(const TxUpdaterEvent.fetch());
+    sl<TxUpdater>().call();
   }
 
   @override
   Widget build(BuildContext context) => RefreshIndicator(
-        onRefresh: () => context.read<TxUpdaterBloc>().update(),
+        onRefresh: () => sl<TxUpdater>().call(),
+        color: CpColors.primaryColor,
+        backgroundColor: Colors.white,
         child: StreamBuilder<IList<String>>(
           stream: _txs,
           builder: (context, snapshot) {
@@ -42,17 +44,16 @@ class _TransactionListState extends State<TransactionList> {
 
             if (data == null) return const SizedBox.shrink();
 
-            final isLoading = context.select<TxUpdaterBloc, bool>(
-              (value) => value.state.isProcessing,
-            );
-
             return data.isEmpty
                 ? Center(
-                    child: isLoading
-                        ? const LoadingIndicator()
-                        : const NoActivity(),
+                    child: NoActivity(
+                      onSendMoneyPressed: widget.onSendMoneyPressed,
+                    ),
                   )
                 : ListView.custom(
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
                     padding: widget.padding,
                     childrenDelegate: SliverChildBuilderDelegate(
                       (context, i) => _KeepAlive(

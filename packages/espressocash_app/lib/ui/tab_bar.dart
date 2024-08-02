@@ -7,12 +7,14 @@ enum CpTabBarVariant { dark, inverted, light, black }
 class CpTabBar extends StatelessWidget {
   const CpTabBar({
     super.key,
-    this.variant = CpTabBarVariant.dark,
+    this.variant = CpTabBarVariant.black,
     required this.tabs,
+    this.controller,
   });
 
   final CpTabBarVariant variant;
   final List<Widget> tabs;
+  final TabController? controller;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -23,6 +25,7 @@ class CpTabBar extends StatelessWidget {
           shape: const StadiumBorder(),
         ),
         child: TabBar(
+          controller: controller,
           indicatorColor: Colors.transparent,
           unselectedLabelColor: _unselectedLabelColor(variant),
           labelColor: _labelColor(variant),
